@@ -1,0 +1,132 @@
+---
+id: "l402-protocol-explained"
+title: "L402: The Protocol for Internet Payments"
+author: "Lightning Labs"
+date: "2024-03-20"
+price: 200
+tags: ["l402", "lightning", "http", "api"]
+---
+
+L402 (HTTP 402 Payment Required) is a protocol that enables paid APIs and content using Lightning Network payments. This article explains how L402 works and why it's revolutionary for internet monetization.
+
+## The Problem
+
+The internet's original sin was giving everything away for "free." This led to:
+- Advertising-based business models
+- Data harvesting and surveillance
+- Paywalls that require subscriptions
+- Content locked behind credit card forms
+
+Micropayments were promised but never delivered—until Bitcoin and Lightning made them possible.
+
+## HTTP 402: A Status Code Reborn
+
+HTTP originally defined status code 402 as "Payment Required" but left it reserved. L402 brings it to life:
+
+```
+HTTP/1.1 402 Payment Required
+WWW-Authenticate: L402 macaroon="...", invoice="lnbc10n1p..."
+
+{
+  "error": "Payment Required",
+  "invoice": "lnbc10n1p..."
+}
+```
+
+The flow is elegant:
+1. Client requests paid resource
+2. Server responds 402 with payment challenge
+3. Client pays Lightning invoice
+4. Client retries with payment proof
+5. Server grants access
+
+## Macaroons: Fancy Cookies
+
+L402 uses macaroons—cryptographic cookies that encode permissions:
+
+- **First-party caveats**: Payment hash, expiry, resource ID
+- **Verification**: Server checks preimage hashes to payment hash
+- **No database needed**: All state is in the macaroon
+
+```typescript
+// Example macaroon verification
+const verify = (macaroon, preimage) => {
+  const hash = sha256(preimage);
+  return macaroon.caveats.payment_hash === hash;
+};
+```
+
+## Implementation Example
+
+### Server (Express.js)
+```typescript
+app.get('/api/content', l402Middleware, (req, res) => {
+  res.json({ content: 'Paid content here!' });
+});
+```
+
+### Client
+```typescript
+const fetchPaid = async (url) => {
+  let response = await fetch(url);
+  
+  if (response.status === 402) {
+    const { invoice } = await response.json();
+    const preimage = await payInvoice(invoice);
+    
+    response = await fetch(url, {
+      headers: {
+        'Authorization': `L402 ${macaroon}:${preimage}`
+      }
+    });
+  }
+  
+  return response.json();
+};
+```
+
+## Real-World Applications
+
+### API Monetization
+- Pay per API call
+- Rate limiting via payment
+- No API keys needed
+
+### Content Monetization
+- Pay-per-article news
+- Video streaming by the minute
+- Podcast episode payments
+
+### IoT and Machine Payments
+- Smart meter payments
+- Vehicle charging
+- Compute resource rental
+
+## Advantages Over Traditional Paywalls
+
+| Feature | Traditional | L402 |
+|---------|-------------|------|
+| Payment Size | Subscription ($10+) | Micropayment ($0.01+) |
+| Friction | High (signup, forms) | Low (one click) |
+| Privacy | Personal info required | Pseudonymous |
+| Global | Credit card only | Anyone with Bitcoin |
+
+## The Future
+
+L402 enables an internet where:
+- Creators earn directly from consumers
+- Users pay only for what they consume
+- No ads or tracking required
+- Global access without banking restrictions
+
+It's the original vision of the internet—now with working payments.
+
+## Getting Started
+
+To implement L402:
+1. Run a Lightning/Fiber node
+2. Add middleware to generate challenges
+3. Verify macaroons on protected routes
+4. Watch payments flow!
+
+The protocol is open, permissionless, and ready for the next billion internet users.

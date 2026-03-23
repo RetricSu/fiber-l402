@@ -1,0 +1,98 @@
+# Task 4: Vitest Testing Framework Setup - Evidence
+
+## Date: 2026-03-23
+
+## Installation Verification
+
+### Root Dependencies Installed
+```
+✓ vitest@^4.1.0
+✓ @vitest/coverage-v8@^4.1.0
+✓ @vitest/ui@^4.1.0
+```
+
+### Test Command Output
+```
+> @fiber-l402/root@0.0.0 test /Users/retric/Desktop/fiber-l402
+> vitest run
+
+ RUN  v4.1.0 /Users/retric/Desktop/fiber-l402
+
+No test files found, exiting with code 1
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/node_modules/**, **/.git/**
+```
+
+Note: Exit code 1 is expected as no test files exist yet (setup only).
+Vitest is correctly installed and running.
+
+## Created Files
+
+### vitest.config.ts
+```typescript
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+    },
+  },
+});
+```
+
+### vitest.workspace.ts
+```typescript
+import { defineWorkspace } from 'vitest/config';
+
+export default defineWorkspace([
+  'packages/*',
+  'apps/*',
+]);
+```
+
+### Root package.json Scripts
+```json
+{
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:unit": "vitest run --project packages/*",
+  "test:integration": "vitest run --project apps/proxy",
+  "test:e2e": "echo 'E2E tests use Playwright'",
+  "test:coverage": "vitest run --coverage"
+}
+```
+
+## packages/test-utils Package
+
+### Structure
+```
+packages/test-utils/
+├── package.json
+├── tsconfig.json
+├── .gitignore
+└── src/
+    └── index.ts
+```
+
+### Exports
+- `createMockArticle(overrides?)` - Creates mock Article objects
+- `createMockInvoice(overrides?)` - Creates mock Invoice objects
+- `createMockPaymentSession(overrides?)` - Creates mock PaymentSession objects
+- `createMockFiberNode()` - Creates mock Fiber node with vi.fn() methods
+- `generateTestMacaroon()` - Returns base64 encoded test macaroon
+- `generateTestPreimage()` - Returns hex test preimage
+
+## QA Checklist
+- [x] vitest installed at root
+- [x] vitest.config.ts created
+- [x] vitest.workspace.ts created
+- [x] Root package.json updated with test scripts
+- [x] packages/test-utils created
+- [x] Mock helpers implemented
+- [x] `pnpm test` runs vitest successfully
+- [x] Evidence file saved

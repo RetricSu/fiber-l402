@@ -1,0 +1,183 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { PaymentGate } from '../../components/PaymentGate.tsx';
+import '../../components/PaymentGate.css';
+
+const { id } = Astro.params;
+let article = null;
+let error = null;
+
+// Fetch article metadata with error handling
+try {
+  const response = await fetch(`http://localhost:3001/api/articles/${id}`);
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Article not found');
+    }
+    throw new Error(`Server error: ${response.status}`);
+  }
+  article = await response.json();
+} catch (e) {
+  error = e instanceof Error ? e.message : 'Failed to load article. Please try again later.';
+  // If fetch failed (e.g., proxy unreachable), provide a better message
+  if (error.includes('fetch') || error.includes('ECONNREFUSED')) {
+    error = 'Failed to load article. The content server is currently unreachable. Please try again later.';
+  }
+}
+---
+
+<Layout title={article?.title || 'Error'}>
+  <main class="article-detail">
+    {error && (
+      <div class="error-message">
+        <h2>Error</h2>
+        <p>{error}</p>
+        <a href="/articles" class="back-link">← Back to articles</a>
+      </div>
+    )}
+    
+    {!error && article && (
+      <article>
+        <header>
+          <h1>{article.title}</h1>
+          <p class="meta">
+            By {article.author} • {new Date(article.date).toLocaleDateString()}
+          </p>
+          <div class="tags">
+            {article.tags.map((tag: string) => (
+              <span class="tag">{tag}</span>
+            ))}
+          </div>
+        </header>
+
+        <div class="preview-section">
+          <h2>Preview</h2>
+          <p>{article.preview}</p>
+        </div>
+
+        <PaymentGate 
+          client:load 
+          articleId={id} 
+          price={article.price} 
+          onUnlock={(content: any) => {
+            // Replace content section with full article
+            const contentEl = document.getElementById('article-content');
+            if (contentEl) {
+              contentEl.innerHTML = content.content;
+              contentEl.classList.remove('locked');
+            }
+          }}
+        />
+
+        <div id="article-content" class="content-section locked">
+          <p class="locked-message">Pay to unlock the full content...</p>
+        </div>
+      </article>
+    )}
+  </main>
+</Layout>
+
+<style>
+  .article-detail {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .error-message {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    margin: 2rem 0;
+  }
+
+  .error-message h2 {
+    color: #dc2626;
+    margin-bottom: 1rem;
+  }
+
+  .error-message p {
+    color: #7f1d1d;
+    margin-bottom: 1.5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  h1 {
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+
+  .meta {
+    color: #666;
+    margin-bottom: 1rem;
+  }
+
+  .tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    padding: 0.25rem 0.75rem;
+    background: #f0f0f0;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: #555;
+  }
+
+  .preview-section {
+    margin: 2rem 0;
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: 8px;
+  }
+
+  .preview-section h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #555;
+  }
+
+  .content-section {
+    margin-top: 2rem;
+    padding: 2rem;
+    border-radius: 8px;
+  }
+
+  .content-section.locked {
+    background: #f8f9fa;
+    border: 2px dashed #ddd;
+  }
+
+  .content-section:not(.locked) {
+    background: #fff;
+    border: 1px solid #ddd;
+    line-height: 1.7;
+  }
+
+  .locked-message {
+    color: #999;
+    text-align: center;
+    font-style: italic;
+    margin: 0;
+  }
+</style>

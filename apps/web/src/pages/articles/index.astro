@@ -1,0 +1,36 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+// Fetch articles from proxy API
+const response = await fetch('http://localhost:3001/api/articles');
+const articles = await response.json();
+---
+
+<Layout title="Articles - Fiber L402">
+  <main class="articles-list">
+    <h1>Articles</h1>
+    <div class="articles-grid">
+      {articles.map((article: any) => (
+        <a href={`/articles/${article.id}`} class="article-card">
+          <h2>{article.title}</h2>
+          <p class="meta">By {article.author} • {new Date(article.date).toLocaleDateString()}</p>
+          <p class="preview">{article.preview}</p>
+          <span class="price">{article.price} CKB</span>
+        </a>
+      ))}
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .articles-list { max-width: 800px; margin: 0 auto; padding: 2rem; }
+  .articles-grid { display: grid; gap: 1.5rem; margin-top: 2rem; }
+  .article-card { 
+    display: block; padding: 1.5rem; border: 1px solid #ddd; 
+    border-radius: 8px; text-decoration: none; color: inherit;
+  }
+  .article-card:hover { border-color: #666; }
+  .meta { color: #666; font-size: 0.9rem; }
+  .preview { color: #444; margin: 0.5rem 0; }
+  .price { color: #e74c3c; font-weight: bold; }
+</style>

@@ -1,0 +1,59 @@
+================================================================================
+TASK 15: Create 3 Demo Articles for L402 Showcase
+Status: COMPLETED
+================================================================================
+
+SUMMARY
+-------
+Created 3 demo articles with L402 payment support for the showcase application.
+Each article has valid frontmatter with price metadata for the payment system.
+
+FILES CREATED IN apps/web/content/articles/:
+--------------------------------------------
+1. bitcoin-lightning-history.mdx (100 CKB)
+   - Title: The History of Bitcoin Lightning Network
+   - Author: Satoshi Nakamoto Jr.
+   - Date: 2024-03-15
+   - Price: 100
+   - Tags: bitcoin, lightning, history
+   - Word Count: ~850 words
+
+2. fiber-network-overview.mdx (150 CKB)
+   - Title: Fiber Network: CKB's Layer 2 Payment Infrastructure
+   - Author: Nervos Team
+   - Date: 2024-03-18
+   - Price: 150
+   - Tags: ckb, fiber, layer2, payments
+   - Word Count: ~900 words
+
+3. l402-protocol-explained.mdx (200 CKB)
+   - Title: L402: The Protocol for Internet Payments
+   - Author: Lightning Labs
+   - Date: 2024-03-20
+   - Price: 200
+   - Tags: l402, lightning, http, api
+   - Word Count: ~1000 words
+
+FILES COPIED TO apps/proxy/content/articles/:
+---------------------------------------------
+- bitcoin-lightning-history.mdx
+- fiber-network-overview.mdx
+- l402-protocol-explained.mdx
+
+TOTAL FILES CREATED: 6
+
+VERIFICATION CHECKLIST:
+----------------------
+[✓] All 6 files created (3 in web, 3 in proxy)
+[✓] Frontmatter valid with all required fields (id, title, author, date, price, tags)
+[✓] Content substantial (800+ words each)
+[✓] Prices set: 100, 150, 200 CKB
+[✓] No images used (text only)
+[✓] No external links
+[✓] Evidence file saved
+
+NOTES:
+------
+- Articles cover Bitcoin Lightning history, Fiber Network technology, and L402 protocol
+- Content is demo-ready and suitable for testing the payment flow
+- Proxy copies enable backend to serve article metadata and content

@@ -1,0 +1,55 @@
+# Task 9a: L402 Middleware Implementation - Evidence
+
+## Completed Changes
+File: `apps/proxy/src/middleware/l402.ts`
+
+### Implementation Summary
+1. Added imports for MacaroonService and InvoiceService
+2. Added private fields for both services
+3. Initialized services in constructor
+4. Implemented handle() method:
+   - Rate limit check (429 if exceeded)
+   - Authorization header check (L402 scheme)
+   - Token parsing (macaroon:preimage format)
+   - Macaroon verification
+   - req.l402 attachment on success
+5. Implemented checkRateLimit() method:
+   - Uses Map-based store with window-based reset
+   - Tracks request count per IP
+   - Returns false when limit exceeded
+6. Implemented issueChallenge() method:
+   - Creates invoice via InvoiceService
+   - Creates macaroon via MacaroonService
+   - Returns 402 with WWW-Authenticate header
+7. Implemented createChallenge() helper:
+   - Converts CKB price to shannons
+   - Creates Fiber invoice
+   - Mints macaroon with payment hash
+
+### Build Status
+✅ TypeScript compilation: PASSED (npx tsc --noEmit)
+
+### Key Code Sections
+```typescript
+// Service initialization
+this.macaroonService = new MacaroonService(this.config.rootKey);
+this.invoiceService = new InvoiceService();
+
+// Authorization parsing
+const [, token] = authHeader.split(' ');
+const [macaroon, preimage] = token.split(':');
+const result = this.macaroonService.verify(macaroon, preimage);
+
+// Challenge response
+res.status(402)
+  .set('WWW-Authenticate', `L402 macaroon="${macaroon}", invoice="${invoice}"`)
+  .json({ error: 'Payment Required', macaroon, invoice });
+```
+
+### Verification Steps Completed
+- [x] Imports added correctly
+- [x] Services initialized in constructor
+- [x] handle() implements full flow
+- [x] checkRateLimit() implemented with Map store
+- [x] issueChallenge() creates 402 response
+- [x] TypeScript compiles without errors

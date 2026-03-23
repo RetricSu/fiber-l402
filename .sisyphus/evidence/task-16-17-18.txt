@@ -1,0 +1,65 @@
+TASK 16, 17, 18 COMPLETION EVIDENCE
+Fiber L402 Payment Proxy - Error Handling + Documentation + E2E Tests
+Date: 2026-03-23
+
+TASK 16: ERROR HANDLING + UX POLISH
+-----------------------------------
+
+1. Updated apps/web/src/pages/articles/[id].astro:
+   - Added try/catch error handling for article fetch
+   - Added error state variable for proxy unreachable scenarios
+   - Added error UI with styled error-message div
+   - Added "Back to articles" link
+
+2. Updated apps/web/src/components/PaymentGate.tsx:
+   - Added isInitialLoading state for cache check phase
+   - Added loading spinner component during initial load
+   - Disabled buttons during loading states
+
+TASK 17: DOCUMENTATION
+----------------------
+
+1. Updated README.md with:
+   - Quick start section
+   - Architecture diagram
+   - Environment variables table
+   - API endpoints table
+
+2. Created SETUP.md with:
+   - Prerequisites
+   - Step-by-step installation
+   - Payment flow testing guide
+
+TASK 18: E2E TESTS (PLAYWRIGHT)
+-------------------------------
+
+1. Installed: @playwright/test@^1.58.2
+
+2. Created playwright.config.ts
+
+3. Created e2e/article.spec.ts with 9 tests:
+   - Article list loads
+   - Articles are displayed
+   - Article card elements
+   - Navigation to detail page
+   - Payment gate display
+   - Payment flow initiation
+   - Error handling (404)
+   - Back link functionality
+   - Home page navigation
+
+VERIFICATION
+------------
+TypeScript Compilation: PASSED
+Playwright Installation: VERIFIED
+
+FILES CREATED/MODIFIED:
+- /Users/retric/Desktop/fiber-l402/apps/web/src/pages/articles/[id].astro
+- /Users/retric/Desktop/fiber-l402/apps/web/src/components/PaymentGate.tsx
+- /Users/retric/Desktop/fiber-l402/README.md
+- /Users/retric/Desktop/fiber-l402/SETUP.md
+- /Users/retric/Desktop/fiber-l402/playwright.config.ts
+- /Users/retric/Desktop/fiber-l402/e2e/article.spec.ts
+- /Users/retric/Desktop/fiber-l402/.sisyphus/evidence/task-16-17-18.txt
+
+STATUS: All tasks completed successfully.

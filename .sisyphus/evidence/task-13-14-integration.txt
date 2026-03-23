@@ -1,0 +1,48 @@
+Task 13-14: L402 Client Integration
+====================================
+
+Files Created:
+--------------
+
+1. /Users/retric/Desktop/fiber-l402/apps/web/src/lib/l402-client.ts
+   - L402Credentials interface
+   - fetchWithL402() - fetch interceptor with auth support
+   - getCachedCredentials() - retrieve from localStorage
+   - cacheCredentials() - store in localStorage
+   - clearCredentials() - remove from localStorage
+
+2. /Users/retric/Desktop/fiber-l402/.env.example
+   - Proxy configuration variables
+   - Web configuration variables
+   - Documented defaults for local development
+
+Integration Status:
+-------------------
+
+PaymentGate component already integrated in:
+- /Users/retric/Desktop/fiber-l402/apps/web/src/pages/articles/[id].astro
+
+The PaymentGate component:
+- Handles onUnlock callback to display full content
+- Uses localStorage for credential caching (inline implementation)
+- Fetches article content with L402 Authorization header
+- Displays invoice for payment and verifies preimage
+
+Verification:
+-------------
+
+TypeScript Compilation: PASSED
+- cd apps/web && npx tsc --noEmit
+- No errors reported
+
+Files Verified:
+- l402-client.ts: 45 lines, all exports present
+- .env.example: 10 lines, all variables documented
+- [id].astro: PaymentGate already imported and configured
+
+Notes:
+------
+- The PaymentGate component has its own inline credential caching
+- The l402-client.ts provides a modular alternative for other use cases
+- No test directory exists in apps/web, skipping integration test
+- Build error in packages/test-utils is pre-existing, not related to this task

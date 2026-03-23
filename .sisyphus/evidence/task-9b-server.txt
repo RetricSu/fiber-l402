@@ -1,0 +1,59 @@
+Task 9b: Create Express Server
+===============================
+
+Evidence of Completion
+----------------------
+
+TypeScript Compilation: PASS
+Date: 2026-03-23
+
+Routes Implemented
+------------------
+
+1. GET /health - Health check
+   Returns: { status: 'ok', service: 'fiber-l402-proxy' }
+   Status: Implemented
+
+2. GET /api/articles - List all articles (public)
+   Uses: ArticleService.loadAll()
+   Returns: Article metadata array (no content field)
+   Status: Implemented
+
+3. GET /api/articles/:id - Get article metadata (public)
+   Uses: ArticleService.getById()
+   Returns: Article without content field
+   Error: 404 if not found
+   Status: Implemented
+
+4. GET /api/articles/:id/content - Get full article content (L402 PROTECTED)
+   Uses: L402Middleware.handle() + ArticleService.getById()
+   Returns: Full article WITH content field
+   Error: 404 if not found
+   Status: Implemented
+
+Files Created
+-------------
+
+apps/proxy/src/server.ts (91 lines)
+
+Services Used
+-------------
+
+- L402Middleware from './middleware/l402.js'
+- ArticleService from './services/article.js'
+- Type: Article from '@fiber-l402/types'
+
+Helper Function
+---------------
+
+withoutContent(article): Strips content field from Article for public responses
+
+Middleware Configuration
+------------------------
+
+- CORS: origin from WEB_URL env (default: http://localhost:4321)
+- JSON body parser enabled
+- L402Middleware configured with:
+  - rootKey: L402_ROOT_KEY
+  - priceCkb: ARTICLE_PRICE_CKB (default: 100)
+  - expirySeconds: L402_EXPIRY_SECONDS (default: 3600)

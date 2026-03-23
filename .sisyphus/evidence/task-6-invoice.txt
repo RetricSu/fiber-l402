@@ -1,0 +1,52 @@
+# Task 6: InvoiceService Implementation Evidence
+
+## Files Created
+1. `apps/proxy/src/services/invoice.ts` - InvoiceService class for Fiber Network integration
+2. `apps/proxy/src/services/invoice.test.ts` - Comprehensive test suite
+
+## Test Results
+```
+✓ Test Files  1 passed (1)
+✓ Tests       5 passed (5)
+Duration     121ms
+```
+
+## Test Coverage
+
+### createInvoice tests:
+- ✓ Creates invoice with correct parameters
+- ✓ Throws on RPC error
+
+### getPaymentStatus tests:
+- ✓ Returns 'success' for successful payment
+- ✓ Returns 'pending' for created payment
+- ✓ Returns 'pending' when payment not found
+
+## TypeScript Compilation
+```
+✓ tsc --noEmit (no errors)
+```
+
+## Implementation Details
+
+### InvoiceService Methods:
+1. `createInvoice(params)` - Creates a new invoice via Fiber RPC
+2. `getPaymentStatus(paymentHash)` - Checks payment status
+3. `parseInvoiceAddress(address)` - Placeholder for invoice parsing
+4. `rpcCall<T>(method, params)` - Private RPC helper
+
+### Configuration:
+- RPC URL from config, env var FIBER_RPC_URL, or default http://127.0.0.1:8227
+- Biscuit token from config or env var FIBER_BISCUIT_TOKEN
+- Default expiry: 3600 seconds (1 hour)
+
+### Fiber RPC Methods Used:
+- `new_invoice` - Creates new invoice
+- `get_payment` - Gets payment status
+
+## Currency Support:
+- `Fibb` - Mainnet
+- `Fibt` - Testnet
+- `Fibd` - Dev
+
+## Date: 2026-03-23

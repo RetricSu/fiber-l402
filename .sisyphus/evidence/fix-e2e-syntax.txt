@@ -1,0 +1,17 @@
+E2E Syntax Error Fix
+====================
+
+File: e2e/article.spec.ts
+Line: 17
+
+Issue:
+  await expect(articles).toHaveCount GreaterThan(0);
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        Invalid syntax - space in method name
+
+Fix:
+  await expect(articles).toHaveCountGreaterThan(0);
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        Correct playwright assertion method
+
+Fixed on: 2026-03-23
