@@ -1,7 +1,6 @@
 import type { Invoice } from '@fiber-l402/types';
+import { FiberRpcClient, type CkbInvoice, type HashAlgorithm } from '@fiber-pay/sdk';
 
-// We'll use direct RPC since SDK is ESM and proxy is CommonJS for now
-// Or we can use dynamic import for the SDK
 export interface InvoiceServiceConfig {
   rpcUrl: string;
   biscuitToken?: string;
@@ -15,25 +14,9 @@ export interface CreateInvoiceParams {
   expirySeconds?: number;
 }
 
-export interface FiberInvoiceResponse {
-  invoice_address: string;
-  invoice: {
-    payment_hash: string;
-    amount: string;
-    currency: string;
-    description: string;
-    expiry: string;
-    timestamp: string;
-    payment_preimage?: string;
-    payment_preimage_hash?: string;
-    hash_algorithm: 'sha256' | 'ckb_hash';
-    udt_script?: string | null;
-    signature?: string;
-  };
-}
-
 export class InvoiceService {
   private config: InvoiceServiceConfig;
+  private client: FiberRpcClient;
 
   constructor(config: Partial<InvoiceServiceConfig> = {}) {
     this.config = {
@@ -41,35 +24,51 @@ export class InvoiceService {
       biscuitToken: config.biscuitToken || process.env.FIBER_BISCUIT_TOKEN,
       defaultExpirySeconds: config.defaultExpirySeconds || 3600,
     };
+
+    this.client = new FiberRpcClient({
+      url: this.config.rpcUrl,
+      biscuitToken: this.config.biscuitToken,
+    });
   }
 
   async createInvoice(params: CreateInvoiceParams): Promise<Invoice> {
-    const response = await this.rpcCall<FiberInvoiceResponse>('new_invoice', {
-      amount: params.amount,
+    const response = await this.client.newInvoice({
+      amount: params.amount as `0x${string}`,
       description: params.description || 'L402 Payment',
       currency: params.currency,
       expiry: `0x${(params.expirySeconds || this.config.defaultExpirySeconds).toString(16)}`,
-      hash_algorithm: 'sha256',
+      hash_algorithm: 'Sha256' as HashAlgorithm,
     });
 
+    const paymentHash = response.invoice.data.payment_hash;
+    const description =
+      this.getInvoiceAttr(response.invoice, 'Description') ||
+      this.getInvoiceAttr(response.invoice, 'description') ||
+      params.description ||
+      'L402 Payment';
+    const expiryHex =
+      this.getInvoiceAttr(response.invoice, 'ExpiryTime') ||
+      this.getInvoiceAttr(response.invoice, 'expiry_time') ||
+      `0x${this.config.defaultExpirySeconds.toString(16)}`;
+    const timestampHex = response.invoice.data.timestamp || `0x${Math.floor(Date.now() / 1000).toString(16)}`;
+
+    if (!paymentHash) {
+      throw new Error('RPC response missing payment hash');
+    }
+
     return {
-      paymentHash: response.invoice.payment_hash,
+      paymentHash,
       invoiceAddress: response.invoice_address,
-      amount: response.invoice.amount,
-      description: response.invoice.description,
-      expiry: parseInt(response.invoice.expiry, 16),
-      createdAt: parseInt(response.invoice.timestamp, 16),
+      amount: response.invoice.amount || params.amount,
+      description,
+      expiry: parseInt(expiryHex, 16),
+      createdAt: parseInt(timestampHex, 16),
     };
   }
 
   async getPaymentStatus(paymentHash: string): Promise<'pending' | 'success' | 'failed'> {
     try {
-      const response = await this.rpcCall<{
-        payment_hash: string;
-        status: 'Created' | 'Inflight' | 'Success' | 'Failed';
-      }>('get_payment', {
-        payment_hash: paymentHash,
-      });
+      const response = await this.client.getPayment({ payment_hash: paymentHash as `0x${string}` });
 
       switch (response.status) {
         case 'Success':
@@ -87,55 +86,49 @@ export class InvoiceService {
     }
   }
 
-  parseInvoiceAddress(address: string): { paymentHash: string; amount: string; expiry: number } {
-    // Fiber invoice format: fibt1000000001p...
-    // This is a simplified parser - in production, use proper bech32 decoding
+  async getInvoiceStatus(paymentHash: string): Promise<'Open' | 'Cancelled' | 'Expired' | 'Received' | 'Paid' | 'Unknown'> {
+    try {
+      const response = await this.client.getInvoice({ payment_hash: paymentHash as `0x${string}` });
+      return response.status;
+    } catch {
+      return 'Unknown';
+    }
+  }
+
+  async parseInvoiceAddress(address: string): Promise<{ paymentHash: string; amount: string; expiry: number }> {
+    // Quick format guard before calling SDK parser.
     if (!address.startsWith('fib') || address.length < 20) {
       throw new Error('Invalid invoice address format');
     }
 
-    // For now, return placeholder - actual parsing requires bech32 library
-    // This will be called after getting the invoice from createInvoice
+    const parsed = await this.client.parseInvoice({ invoice: address });
+    const paymentHash = parsed.invoice.data.payment_hash;
+    const amount = parsed.invoice.amount || '0x0';
+    const expiryHex =
+      this.getInvoiceAttr(parsed.invoice, 'ExpiryTime') ||
+      this.getInvoiceAttr(parsed.invoice, 'expiry_time') ||
+      '0x0';
+
     return {
-      paymentHash: '', // Will be filled from createInvoice response
-      amount: '',
-      expiry: 0,
+      paymentHash,
+      amount,
+      expiry: parseInt(expiryHex, 16),
     };
   }
 
-  private async rpcCall<T>(method: string, params: unknown): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (this.config.biscuitToken) {
-      headers['Authorization'] = `Bearer ${this.config.biscuitToken}`;
+  private getInvoiceAttr(invoice: CkbInvoice, key: string): string | undefined {
+    const attrs = invoice.data?.attrs;
+    if (!attrs || attrs.length === 0) {
+      return undefined;
     }
 
-    const response = await fetch(this.config.rpcUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method,
-        params,
-        id: Date.now(),
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`RPC call failed: ${response.status} ${response.statusText}`);
+    for (const attr of attrs) {
+      const value = (attr as Record<string, unknown>)[key];
+      if (typeof value === 'string') {
+        return value;
+      }
     }
 
-    const data = await response.json() as {
-      result?: T;
-      error?: { code: number; message: string };
-    };
-
-    if (data.error) {
-      throw new Error(`RPC error: ${data.error.message}`);
-    }
-
-    return data.result as T;
+    return undefined;
   }
 }

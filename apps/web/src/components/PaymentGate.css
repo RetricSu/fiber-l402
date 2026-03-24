@@ -114,6 +114,15 @@
   cursor: not-allowed;
 }
 
+.auto-pay-btn {
+  margin-top: 0.6rem;
+  background: #1f6feb;
+}
+
+.auto-pay-btn:hover {
+  background: #1859bc;
+}
+
 .error {
   color: #dc3545;
   margin-top: 0.5rem;
@@ -170,5 +179,148 @@
 
 .copy-btn:disabled {
   background: #6c757d;
+  cursor: not-allowed;
+}
+
+.fiber-connect-panel {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d5deea;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+.fiber-connect-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #2f3a4a;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.connected {
+  background: #2ca24f;
+}
+
+.status-dot.disconnected {
+  background: #d85757;
+}
+
+.fiber-node-meta {
+  margin-top: 0.5rem;
+  color: #566277;
+  font-size: 0.86rem;
+}
+
+.fiber-connect-actions {
+  margin-top: 0.65rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fiber-connect-btn,
+.fiber-disconnect-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.fiber-connect-btn {
+  background: #1f6feb;
+  color: #fff;
+}
+
+.fiber-connect-btn:hover {
+  background: #1859bc;
+}
+
+.fiber-disconnect-btn {
+  background: #dbe3ef;
+  color: #2f3a4a;
+}
+
+.fiber-disconnect-btn:hover {
+  background: #cad5e5;
+}
+
+.fiber-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(19, 26, 38, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 999;
+}
+
+.fiber-modal {
+  width: min(500px, 100%);
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 10px 32px rgba(17, 26, 44, 0.22);
+}
+
+.fiber-modal h4 {
+  margin: 0 0 0.5rem;
+  color: #1d2a3f;
+}
+
+.fiber-modal-hint {
+  margin: 0 0 0.8rem;
+  color: #5f6b7e;
+  font-size: 0.92rem;
+}
+
+.fiber-rpc-input {
+  width: 100%;
+  border: 1px solid #c8d3e4;
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.fiber-modal-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.fiber-modal-cancel,
+.fiber-modal-connect {
+  border: none;
+  border-radius: 7px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.fiber-modal-cancel {
+  background: #e7edf7;
+  color: #2f3a4a;
+}
+
+.fiber-modal-connect {
+  background: #1f6feb;
+  color: #fff;
+}
+
+.fiber-modal-connect:disabled,
+.fiber-modal-cancel:disabled,
+.fiber-connect-btn:disabled,
+.fiber-disconnect-btn:disabled {
+  opacity: 0.65;
   cursor: not-allowed;
 }

@@ -4,7 +4,8 @@ import type { L402Config, L402Challenge, L402Token } from '@fiber-l402/types';
 export interface L402Request extends Request {
   l402?: {
     valid: boolean;
-    preimage: string;
+    preimage?: string;
+    paymentHash?: string;
     token?: L402Token;
   };
 }

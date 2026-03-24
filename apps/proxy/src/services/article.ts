@@ -81,7 +81,7 @@ export class ArticleService {
       title: frontmatter.title || 'Untitled',
       author: frontmatter.author || 'Unknown',
       date: frontmatter.date || new Date().toISOString().split('T')[0],
-      price: frontmatter.price || 100,
+      price: frontmatter.price ?? 0.1,
       preview,
       content: body,
       tags: frontmatter.tags || [],
@@ -100,7 +100,7 @@ export class ArticleService {
           title: '',
           author: '',
           date: '',
-          price: 100,
+          price: 0.1,
           tags: [],
         },
         body: content,
@@ -126,7 +126,10 @@ export class ArticleService {
             v.trim().replace(/^["']|["']$/g, '')
           );
         } else if (key === 'price') {
-          (frontmatter as Record<string, unknown>)[key] = parseInt(value, 10) || 100;
+          const parsedPrice = Number(value);
+          (frontmatter as Record<string, unknown>)[key] = Number.isFinite(parsedPrice)
+            ? parsedPrice
+            : 0.1;
         } else {
           (frontmatter as Record<string, unknown>)[key] = value.replace(/^["']|["']$/g, '');
         }
@@ -139,7 +142,7 @@ export class ArticleService {
         title: frontmatter.title || '',
         author: frontmatter.author || '',
         date: frontmatter.date || '',
-        price: frontmatter.price || 100,
+        price: frontmatter.price ?? 0.1,
         tags: frontmatter.tags || [],
       },
       body,

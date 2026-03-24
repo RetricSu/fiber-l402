@@ -32,6 +32,9 @@ importers:
       '@fiber-l402/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@fiber-pay/sdk':
+        specifier: 0.1.0
+        version: 0.1.0
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -69,6 +72,9 @@ importers:
       '@fiber-l402/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@fiber-pay/sdk':
+        specifier: 0.1.0
+        version: 0.1.0
       astro:
         specifier: ^5.0.0
         version: 5.18.1(@types/node@20.19.37)(lightningcss@1.32.0)(rollup@4.60.0)(tsx@4.21.0)(typescript@5.9.3)
@@ -541,6 +547,10 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@fiber-pay/sdk@0.1.0':
+    resolution: {integrity: sha512-N//V1foA1dgf/YE/5zDXN4rVPWx9j+S8EWLr708NgX+Jeks+sRdqUTR0YchGxBQPPulAX8YEgJEc6dmcW4cxLg==}
+    engines: {node: '>=20'}
+
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
     engines: {node: '>=18'}
@@ -712,6 +722,10 @@ packages:
 
   '@napi-rs/wasm-runtime@1.1.1':
     resolution: {integrity: sha512-p64ah1M1ld8xjWv3qbvFwHiFVWrq1yFvV4f7w+mzaqiR4IlSgkqhcRdHwsGgomwzBH51sRY4NEowLxnaBjcW/A==}
+
+  '@noble/hashes@2.0.1':
+    resolution: {integrity: sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==}
+    engines: {node: '>= 20.19.0'}
 
   '@oslojs/encoding@1.1.0':
     resolution: {integrity: sha512-70wQhgYmndg4GCPxPPxPGevRKqTIJ2Nh4OkiMWmDAVYsTQ+Ta7Sq+rPevXyXGdzr30/qZBnyOalCszoMxlyldQ==}
@@ -2733,6 +2747,9 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
@@ -3097,6 +3114,11 @@ snapshots:
   '@esbuild/win32-x64@0.27.4':
     optional: true
 
+  '@fiber-pay/sdk@0.1.0':
+    dependencies:
+      '@noble/hashes': 2.0.1
+      zod: 4.3.6
+
   '@img/colour@1.1.0':
     optional: true
 
@@ -3219,6 +3241,8 @@ snapshots:
       '@emnapi/runtime': 1.9.1
       '@tybys/wasm-util': 0.10.1
     optional: true
+
+  '@noble/hashes@2.0.1': {}
 
   '@oslojs/encoding@1.1.0': {}
 
@@ -5480,5 +5504,7 @@ snapshots:
       zod: 3.25.76
 
   zod@3.25.76: {}
+
+  zod@4.3.6: {}
 
   zwitch@2.0.4: {}

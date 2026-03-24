@@ -42,17 +42,39 @@ export class L402Middleware {
       return this.issueChallenge(req, res);
     }
 
-    const [macaroon, preimage] = token.split(':');
-    if (!macaroon || !preimage) {
+    const splitIndex = token.indexOf(':');
+    const macaroon = splitIndex >= 0 ? token.slice(0, splitIndex) : token;
+    const preimage = splitIndex >= 0 ? token.slice(splitIndex + 1) : undefined;
+
+    if (!macaroon) {
       return this.issueChallenge(req, res);
     }
 
-    const result = this.macaroonService.verify(macaroon, preimage);
-    if (!result.valid) {
-      return this.issueChallenge(req, res, 401, result.error);
+    // Path A: legacy flow with explicit preimage (manual entry).
+    if (preimage) {
+      const result = this.macaroonService.verify(macaroon, preimage);
+      if (!result.valid) {
+        return this.issueChallenge(req, res, 401, result.error);
+      }
+
+      req.l402 = { valid: true, preimage };
+      next();
+      return;
     }
 
-    req.l402 = { valid: true, preimage };
+    // Path B: connected-node flow without preimage; trust paid invoice status.
+    const caveats = this.macaroonService.extractCaveats(macaroon);
+    const paymentHash = caveats.payment_hash;
+    if (!paymentHash) {
+      return this.issueChallenge(req, res, 401, 'Missing payment hash caveat');
+    }
+
+    const invoiceStatus = await this.invoiceService.getInvoiceStatus(paymentHash);
+    if (invoiceStatus !== 'Paid') {
+      return this.issueChallenge(req, res, 401, `Invoice not settled (status: ${invoiceStatus})`);
+    }
+
+    req.l402 = { valid: true, paymentHash };
     next();
   }
 

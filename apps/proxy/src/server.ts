@@ -21,7 +21,7 @@ app.use(express.json());
 const articleService = new ArticleService();
 const l402Middleware = new L402Middleware({
   rootKey: process.env.L402_ROOT_KEY,
-  priceCkb: parseInt(process.env.ARTICLE_PRICE_CKB || '100', 10),
+  priceCkb: Number(process.env.ARTICLE_PRICE_CKB || '0.1'),
   expirySeconds: parseInt(process.env.L402_EXPIRY_SECONDS || '3600', 10),
 });
 
