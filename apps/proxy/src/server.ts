@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { L402Middleware } from './middleware/l402.js';
 import { ArticleService } from './services/article.js';
 import type { Article } from '@fiber-l402/types';
+import { DefaultResourceResolverRegistry, ArticleContentResolver } from './resources/index.js';
 
 dotenv.config();
 
@@ -19,10 +20,15 @@ app.use(express.json());
 
 // Services
 const articleService = new ArticleService();
+const resourceResolverRegistry = new DefaultResourceResolverRegistry([
+  new ArticleContentResolver(articleService),
+]);
+
 const l402Middleware = new L402Middleware({
   rootKey: process.env.L402_ROOT_KEY,
   priceCkb: Number(process.env.ARTICLE_PRICE_CKB || '0.1'),
   expirySeconds: parseInt(process.env.L402_EXPIRY_SECONDS || '3600', 10),
+  resourceResolver: resourceResolverRegistry,
 });
 
 // Helper to strip content field for public responses

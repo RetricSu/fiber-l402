@@ -15,11 +15,12 @@ describe('MacaroonService', () => {
       const result = service.mint({
         identifier: 'test-1',
         paymentHash: '0x' + 'b'.repeat(64),
-        articleId: 'article-1',
+        resourceId: 'article-1',
+        resourceType: 'article',
       });
 
       expect(result.macaroon).toBeDefined();
-      expect(result.caveats).toHaveLength(3); // payment_hash, expiry, article_id
+      expect(result.caveats).toHaveLength(4); // payment_hash, expiry, resource_id, resource_type
       
       const paymentHashCaveat = result.caveats.find(c => c.condition === 'payment_hash');
       expect(paymentHashCaveat?.value).toBe('0x' + 'b'.repeat(64));
@@ -102,18 +103,68 @@ describe('MacaroonService', () => {
       const { macaroon } = service.mint({
         identifier: 'test-7',
         paymentHash: '0x' + '1'.repeat(64),
-        articleId: 'article-7',
+        resourceId: 'article-7',
+        resourceType: 'article',
       });
 
       const caveats = service.extractCaveats(macaroon);
       expect(caveats.payment_hash).toBe('0x' + '1'.repeat(64));
-      expect(caveats.article_id).toBe('article-7');
+      expect(caveats.resource_id).toBe('article-7');
+      expect(caveats.resource_type).toBe('article');
       expect(caveats.expiry).toBeDefined();
     });
 
     it('should return empty object for invalid macaroon', () => {
       const caveats = service.extractCaveats('invalid-base64');
       expect(caveats).toEqual({});
+    });
+  });
+
+  describe('verifyWithoutPreimage', () => {
+    it('should verify valid macaroon without preimage', () => {
+      const { macaroon } = service.mint({
+        identifier: 'test-8',
+        paymentHash: '0x' + '2'.repeat(64),
+        resourceId: 'article-8',
+        resourceType: 'article',
+      });
+
+      const result = service.verifyWithoutPreimage(macaroon);
+      expect(result.valid).toBe(true);
+      expect(result.caveats?.payment_hash).toBe('0x' + '2'.repeat(64));
+      expect(result.caveats?.resource_id).toBe('article-8');
+      expect(result.caveats?.resource_type).toBe('article');
+    });
+
+    it('should reject expired macaroon without preimage', async () => {
+      const { macaroon } = service.mint({
+        identifier: 'test-9',
+        paymentHash: '0x' + '3'.repeat(64),
+        expirySeconds: -1,
+      });
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const result = service.verifyWithoutPreimage(macaroon);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('expired');
+    });
+
+    it('should reject tampered macaroon without preimage', () => {
+      const { macaroon } = service.mint({
+        identifier: 'test-10',
+        paymentHash: '0x' + '4'.repeat(64),
+      });
+
+      const exported = JSON.parse(Buffer.from(macaroon, 'base64').toString('utf-8'));
+      const caveatBytes: number[] = exported.c[0].i;
+      const caveatStr = Buffer.from(caveatBytes).toString('utf-8');
+      const tampered = caveatStr.replace('payment_hash=0x', 'payment_hash=0xdead');
+      exported.c[0].i = Array.from(Buffer.from(tampered, 'utf-8'));
+
+      const tamperedMacaroon = Buffer.from(JSON.stringify(exported), 'utf-8').toString('base64');
+      const result = service.verifyWithoutPreimage(tamperedMacaroon);
+      expect(result.valid).toBe(false);
     });
   });
 });

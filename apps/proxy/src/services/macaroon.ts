@@ -9,7 +9,8 @@ export interface MacaroonCaveat {
 export interface MintParams {
   identifier: string;
   paymentHash: string;
-  articleId?: string;
+  resourceId?: string;
+  resourceType?: string;
   expirySeconds?: number;
   location?: string;
 }
@@ -40,14 +41,18 @@ export class MacaroonService {
       { condition: 'expiry', value: expiryTimestamp.toString() },
     ];
 
-    if (params.articleId) {
-      caveats.push({ condition: 'article_id', value: params.articleId });
+    if (params.resourceId) {
+      caveats.push({ condition: 'resource_id', value: params.resourceId });
+    }
+    if (params.resourceType) {
+      caveats.push({ condition: 'resource_type', value: params.resourceType });
     }
 
     const identifier = JSON.stringify({
       v: 0,
       pid: params.paymentHash,
-      aid: params.articleId,
+      rid: params.resourceId,
+      rtype: params.resourceType,
       loc: params.location || 'fiber-l402',
     });
 
@@ -111,6 +116,41 @@ export class MacaroonService {
       return { 
         valid: false, 
         error: error instanceof Error ? error.message : 'Verification failed' 
+      };
+    }
+  }
+
+  verifyWithoutPreimage(macaroonB64: string): VerifyResult {
+    try {
+      const exported = JSON.parse(Buffer.from(macaroonB64, 'base64').toString());
+      const m = macaroon.importMacaroon(exported);
+
+      const caveatCheck = (caveat: string): string | null => {
+        if (caveat.startsWith('expiry=')) {
+          const expiry = parseInt(caveat.split('=')[1], 10);
+          if (expiry < Math.floor(Date.now() / 1000)) {
+            return 'Macaroon expired';
+          }
+        }
+        return null;
+      };
+
+      m.verify(this.rootKey, caveatCheck, []);
+
+      const caveats: Record<string, string> = {};
+      for (const caveat of m.caveats) {
+        const caveatStr = Buffer.from(caveat.identifier).toString('utf-8');
+        const [key, value] = caveatStr.split('=');
+        if (key && value) {
+          caveats[key] = value;
+        }
+      }
+
+      return { valid: true, caveats };
+    } catch (error) {
+      return {
+        valid: false,
+        error: error instanceof Error ? error.message : 'Verification failed',
       };
     }
   }
