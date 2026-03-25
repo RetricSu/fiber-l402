@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Article } from '@fiber-l402/types';
 import { FiberRpcClient } from '@fiber-pay/sdk';
+import { FIBER_STATE_CHANGE_EVENT } from './FiberConnectButton';
+
+const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
+const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
 
 interface PaymentGateProps {
   articleId: string;
   price: number;
-  onUnlock: (content: Article) => void;
 }
 
 interface PaymentChallenge {
@@ -13,44 +16,30 @@ interface PaymentChallenge {
   invoice: string;
 }
 
-interface FiberNodeSummary {
-  nodeId: string;
-  chainHash: string;
-}
-
-const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
-const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
-
-export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
+export function PaymentGate({ articleId, price }: PaymentGateProps) {
   const [challenge, setChallenge] = useState<PaymentChallenge | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPaid, setIsPaid] = useState(false);
-  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
-  const [fiberRpcUrl, setFiberRpcUrl] = useState('http://127.0.0.1:8229');
   const [isFiberConnected, setIsFiberConnected] = useState(false);
-  const [isFiberConnecting, setIsFiberConnecting] = useState(false);
-  const [fiberConnectError, setFiberConnectError] = useState<string | null>(null);
-  const [fiberNode, setFiberNode] = useState<FiberNodeSummary | null>(null);
   const [isAutoPaying, setIsAutoPaying] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [articleContent, setArticleContent] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const savedUrl = localStorage.getItem(FIBER_RPC_URL_KEY);
-    const savedConnected = localStorage.getItem(FIBER_CONNECTED_KEY);
-
-    if (savedUrl) {
-      setFiberRpcUrl(savedUrl);
-    }
-
-    setIsFiberConnected(savedConnected === 'true');
+  // Sync connection state from header's FiberConnectButton via localStorage
+  const syncConnectionState = useCallback(() => {
+    const connected = localStorage.getItem(FIBER_CONNECTED_KEY) === 'true';
+    setIsFiberConnected(connected);
   }, []);
 
-  // Check if we have cached credentials
+  useEffect(() => {
+    syncConnectionState();
+    window.addEventListener(FIBER_STATE_CHANGE_EVENT, syncConnectionState);
+    return () => window.removeEventListener(FIBER_STATE_CHANGE_EVENT, syncConnectionState);
+  }, [syncConnectionState]);
+
+  // Check cached credentials
   useEffect(() => {
     const checkCachedCredentials = async () => {
       setIsInitialLoading(true);
@@ -60,42 +49,32 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
           const { macaroon, preimage } = JSON.parse(cached);
           await fetchContent(macaroon, preimage);
         }
-      } catch (e) {
-        // Ignore cache errors, will show payment gate
+      } catch {
+        // Ignore cache errors
       } finally {
         setIsInitialLoading(false);
       }
     };
-    
     checkCachedCredentials();
   }, [articleId]);
 
   const fetchContent = async (macaroon: string, preimage: string) => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const response = await fetch(`http://localhost:3001/api/articles/${articleId}/content`, {
-        headers: {
-          'Authorization': `L402 ${macaroon}:${preimage}`,
-        },
+        headers: { 'Authorization': `L402 ${macaroon}:${preimage}` },
       });
-
       if (response.status === 402) {
-        // Need new challenge
         const data = await response.json();
         setChallenge({ macaroon: data.macaroon, invoice: data.invoice });
         setIsPaid(false);
         return;
       }
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
       const article = await response.json();
       setIsPaid(true);
-      onUnlock(article);
+      setArticleContent(article.content);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -106,7 +85,6 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
   const fetchContentWithPaidInvoice = async (macaroon: string, paymentHash?: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-
     try {
       const response = await fetch(`http://localhost:3001/api/articles/${articleId}/content`, {
         headers: {
@@ -114,19 +92,14 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
           ...(paymentHash ? { 'X-L402-Payment-Hash': paymentHash } : {}),
         },
       });
-
       if (response.status === 402 || response.status === 401) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data?.error || `Payment not settled yet (${response.status})`);
       }
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
       const article = await response.json();
       setIsPaid(true);
-      onUnlock(article);
+      setArticleContent(article.content);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -139,19 +112,15 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
   const initiatePayment = async () => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      // First try to get content (may return 402 with challenge)
       const response = await fetch(`http://localhost:3001/api/articles/${articleId}/content`);
-      
       if (response.status === 402) {
         const data = await response.json();
         setChallenge({ macaroon: data.macaroon, invoice: data.invoice });
       } else if (response.ok) {
-        // Already have access
         const article = await response.json();
         setIsPaid(true);
-        onUnlock(article);
+        setArticleContent(article.content);
       } else {
         throw new Error(`Unexpected response: ${response.status}`);
       }
@@ -164,24 +133,18 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
 
   const checkPayment = async (preimage: string) => {
     if (!challenge) return;
-    
-    // Cache credentials
     localStorage.setItem(`l402-${articleId}`, JSON.stringify({
       macaroon: challenge.macaroon,
       preimage,
     }));
-
     await fetchContent(challenge.macaroon, preimage);
   };
 
   const payWithConnectedNode = async () => {
-    if (!challenge) {
-      return;
-    }
-
-    const trimmedUrl = fiberRpcUrl.trim();
-    if (!trimmedUrl) {
-      setError('Missing Fiber RPC URL. Connect your node first.');
+    if (!challenge) return;
+    const rpcUrl = localStorage.getItem(FIBER_RPC_URL_KEY)?.trim();
+    if (!rpcUrl) {
+      setError('No Fiber node connected. Use the Connect Node button in the header.');
       return;
     }
 
@@ -189,31 +152,22 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
     setError(null);
 
     try {
-      const client = new FiberRpcClient({
-        url: trimmedUrl,
-        timeout: 20000,
-      });
-
+      const client = new FiberRpcClient({ url: rpcUrl, timeout: 20000 });
       const paymentResult = await client.sendPayment({
         invoice: challenge.invoice,
         allow_self_payment: true,
       });
 
       const paymentHash = paymentResult.payment_hash;
-
       if (paymentResult.status === 'Failed') {
         throw new Error(paymentResult.failed_error || 'Payment failed');
       }
 
       let paymentSettled = paymentResult.status === 'Success';
 
-      // Poll payer node until payment settles or fails.
       for (let attempt = 0; !paymentSettled && attempt < 30; attempt += 1) {
         const paymentInfo = await client.getPayment({ payment_hash: paymentHash });
-        if (paymentInfo.status === 'Success') {
-          paymentSettled = true;
-          break;
-        }
+        if (paymentInfo.status === 'Success') { paymentSettled = true; break; }
         if (paymentInfo.status === 'Failed') {
           throw new Error(paymentInfo.failed_error || 'Payment failed on connected node');
         }
@@ -224,12 +178,9 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
         throw new Error('Payment is still pending on your node. Please retry in a few seconds.');
       }
 
-      // Wait for settlement to propagate on receiver side before trying unlock.
       for (let attempt = 0; attempt < 10; attempt += 1) {
         const unlocked = await fetchContentWithPaidInvoice(challenge.macaroon, paymentHash);
-        if (unlocked) {
-          return;
-        }
+        if (unlocked) return;
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
@@ -241,197 +192,113 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
     }
   };
 
-  const connectFiberNode = async () => {
-    const trimmedUrl = fiberRpcUrl.trim();
-    if (!trimmedUrl) {
-      setFiberConnectError('Please enter a Fiber RPC URL.');
-      return;
-    }
-
-    setIsFiberConnecting(true);
-    setFiberConnectError(null);
-
-    try {
-      const client = new FiberRpcClient({
-        url: trimmedUrl,
-        timeout: 8000,
-      });
-
-      const info = await client.nodeInfo();
-
-      setFiberNode({
-        nodeId: info.node_id,
-        chainHash: info.chain_hash,
-      });
-      setIsFiberConnected(true);
-      setIsConnectModalOpen(false);
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(FIBER_RPC_URL_KEY, trimmedUrl);
-        localStorage.setItem(FIBER_CONNECTED_KEY, 'true');
-      }
-    } catch (err) {
-      setFiberNode(null);
-      setIsFiberConnected(false);
-      setFiberConnectError(err instanceof Error ? err.message : 'Failed to connect to Fiber RPC endpoint.');
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(FIBER_RPC_URL_KEY, trimmedUrl);
-        localStorage.setItem(FIBER_CONNECTED_KEY, 'false');
-      }
-    } finally {
-      setIsFiberConnecting(false);
-    }
+  const copyInvoice = () => {
+    if (!challenge) return;
+    navigator.clipboard.writeText(challenge.invoice);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const disconnectFiberNode = () => {
-    setIsFiberConnected(false);
-    setFiberNode(null);
-    setFiberConnectError(null);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(FIBER_CONNECTED_KEY, 'false');
-    }
-  };
+  // ─── Render States ───
 
-  const renderFiberConnectionPanel = () => (
-    <div className="fiber-connect-panel">
-      <div className="fiber-connect-status">
-        <span className={`status-dot ${isFiberConnected ? 'connected' : 'disconnected'}`} />
-        <span>
-          {isFiberConnected ? 'Fiber node connected' : 'Fiber node not connected'}
-        </span>
-      </div>
-
-      {fiberNode && (
-        <div className="fiber-node-meta">
-          <div>
-            <strong>Node:</strong> {fiberNode.nodeId.slice(0, 18)}...
-          </div>
-          <div>
-            <strong>Chain:</strong> {fiberNode.chainHash.slice(0, 14)}...
-          </div>
-        </div>
-      )}
-
-      <div className="fiber-connect-actions">
-        <button
-          type="button"
-          className="fiber-connect-btn"
-          onClick={() => {
-            setFiberConnectError(null);
-            setIsConnectModalOpen(true);
-          }}
-        >
-          {isFiberConnected ? 'Switch Node' : 'Connect Fiber Node'}
-        </button>
-        {isFiberConnected && (
-          <button
-            type="button"
-            className="fiber-disconnect-btn"
-            onClick={disconnectFiberNode}
-          >
-            Disconnect
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderFiberConnectModal = () => {
-    if (!isConnectModalOpen) {
-      return null;
-    }
-
-    return (
-      <div className="fiber-modal-overlay" onClick={() => setIsConnectModalOpen(false)}>
-        <div className="fiber-modal" onClick={(e) => e.stopPropagation()}>
-          <h4>Connect Your Fiber Node</h4>
-          <p className="fiber-modal-hint">
-            Enter your Fiber node RPC URL. We will call nodeInfo via fiber-pay SDK.
-          </p>
-
-          <input
-            type="url"
-            value={fiberRpcUrl}
-            onChange={(e) => setFiberRpcUrl(e.target.value)}
-            placeholder="http://127.0.0.1:8229"
-            className="fiber-rpc-input"
-            disabled={isFiberConnecting}
-          />
-
-          {fiberConnectError && <div className="error">{fiberConnectError}</div>}
-
-          <div className="fiber-modal-actions">
-            <button
-              type="button"
-              className="fiber-modal-cancel"
-              onClick={() => setIsConnectModalOpen(false)}
-              disabled={isFiberConnecting}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="fiber-modal-connect"
-              onClick={connectFiberNode}
-              disabled={isFiberConnecting}
-            >
-              {isFiberConnecting ? 'Connecting...' : 'Connect'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Initial loading state (checking cache)
+  // Initial loading: skeleton
   if (isInitialLoading) {
     return (
-      <>
-        <div className="payment-gate loading">
-          <div className="loading-spinner" />
-          <p>Checking payment status...</p>
+      <div className="rounded-2xl border border-border bg-surface-1 p-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-5 w-48 animate-pulse rounded-lg bg-surface-3" />
+          <div className="h-10 w-64 animate-pulse rounded-lg bg-surface-3" />
+          <div className="h-4 w-36 animate-pulse rounded-lg bg-surface-3" />
         </div>
-        {renderFiberConnectionPanel()}
-        {renderFiberConnectModal()}
-      </>
+      </div>
     );
   }
 
+  // Already paid
   if (isPaid) {
     return (
       <>
-        <div className="payment-success">✓ Content Unlocked</div>
-        {renderFiberConnectionPanel()}
-        {renderFiberConnectModal()}
+        <div className="flex items-center gap-3 rounded-2xl border border-success/20 bg-success/5 px-6 py-4">
+          <svg className="h-5 w-5 shrink-0 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm font-medium text-success">Content unlocked</span>
+        </div>
+        {articleContent && (
+          <div
+            className="article-content mt-8 text-text-secondary leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: articleContent }}
+          />
+        )}
       </>
     );
   }
 
+  // Challenge: Payment view
   if (challenge) {
     return (
-      <>
-        <div className="payment-challenge">
-          <h3>Complete Payment</h3>
-          <p>Price: {price} CKB</p>
+      <div className="rounded-2xl border border-border bg-surface-1 overflow-hidden">
+        {/* Header */}
+        <div className="border-b border-border bg-surface-2/50 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold text-text-primary">Complete Payment</h3>
+            <span className="rounded-lg bg-accent/10 px-3 py-1 text-sm font-semibold text-accent">
+              {price} CKB
+            </span>
+          </div>
+        </div>
 
-          <div className="invoice-section">
-            <label>Invoice Address:</label>
-            <code className="invoice-address">{challenge.invoice}</code>
+        <div className="p-6 space-y-5">
+          {/* Auto-pay: prominent when connected */}
+          {isFiberConnected && (
             <button
-              onClick={() => navigator.clipboard.writeText(challenge.invoice)}
-              className="copy-btn"
-              disabled={isLoading}
+              onClick={payWithConnectedNode}
+              disabled={isAutoPaying || isLoading}
+              className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 py-4 text-base font-semibold text-surface-0 transition-all duration-200 hover:bg-accent-hover hover:shadow-[0_0_24px_oklch(0.75_0.12_85/0.25)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              Copy
+              {isAutoPaying ? (
+                <>
+                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-0/30 border-t-surface-0" />
+                  Paying with your node…
+                </>
+              ) : (
+                <>
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                  </svg>
+                  Pay with Connected Node
+                </>
+              )}
             </button>
+          )}
+
+          {isFiberConnected && (
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-text-muted">or pay manually</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+          )}
+
+          {/* Invoice */}
+          <div>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
+              Invoice
+            </label>
+            <div className="relative">
+              <code className="block max-h-24 overflow-y-auto rounded-xl border border-border bg-surface-2 p-4 font-mono text-xs leading-relaxed text-text-secondary break-all">
+                {challenge.invoice}
+              </code>
+              <button
+                onClick={copyInvoice}
+                className="absolute right-2 top-2 rounded-lg bg-surface-3 px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-4 hover:text-text-primary cursor-pointer"
+              >
+                {copied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
           </div>
 
-          <p className="instructions">
-            1. Copy the invoice address above<br/>
-            2. Pay using your Fiber wallet<br/>
-            3. Enter the payment preimage below
-          </p>
-
+          {/* Manual preimage */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -440,60 +307,77 @@ export function PaymentGate({ articleId, price, onUnlock }: PaymentGateProps) {
               checkPayment(input.value);
             }}
           >
-            <input
-              type="text"
-              name="preimage"
-              placeholder="Enter payment preimage (0x...)"
-              className="preimage-input"
-              required
-              disabled={isLoading}
-            />
-            <button type="submit" disabled={isLoading} className="verify-btn">
-              {isLoading ? (
-                <>
-                  <span className="spinner-small" />
-                  Verifying...
-                </>
-              ) : 'Verify Payment'}
-            </button>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
+              Payment Preimage
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="preimage"
+                placeholder="0x..."
+                required
+                disabled={isLoading}
+                className="flex-1 rounded-xl border border-border bg-surface-2 px-4 py-3 font-mono text-sm text-text-primary placeholder-text-muted transition-colors focus:border-accent focus:outline-none disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="rounded-xl bg-surface-3 px-5 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-4 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isLoading ? 'Verifying…' : 'Verify'}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-text-muted">
+              Pay the invoice with any Fiber wallet, then enter the preimage to unlock.
+            </p>
           </form>
 
-          {isFiberConnected && (
-            <button
-              type="button"
-              className="verify-btn auto-pay-btn"
-              disabled={isAutoPaying || isLoading}
-              onClick={payWithConnectedNode}
-            >
-              {isAutoPaying ? 'Paying with your node...' : 'Pay With Connected Node'}
-            </button>
+          {error && (
+            <div className="rounded-xl bg-error/10 px-4 py-3 text-sm text-error">
+              {error}
+            </div>
           )}
-
-          {error && <div className="error">{error}</div>}
         </div>
-        {renderFiberConnectionPanel()}
-        {renderFiberConnectModal()}
-      </>
+      </div>
     );
   }
 
+  // Default: Unlock prompt
   return (
-    <>
-      <div className="payment-gate">
-        <p>This content requires payment</p>
-        <button onClick={initiatePayment} disabled={isLoading} className="pay-btn">
-          {isLoading ? (
-            <>
-              <span className="spinner-small" />
-              Loading...
-            </>
-          ) : `Unlock for ${price} CKB`}
-        </button>
-        {error && <div className="error">{error}</div>}
+    <div className="rounded-2xl border border-accent/20 bg-accent/5 p-8 text-center">
+      <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
+        <svg className="h-7 w-7 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        </svg>
       </div>
-
-      {renderFiberConnectionPanel()}
-      {renderFiberConnectModal()}
-    </>
+      <h3 className="mb-2 text-lg font-semibold text-text-primary">Premium Content</h3>
+      <p className="mb-5 text-sm text-text-secondary">
+        Unlock this article for <strong className="text-accent">{price} CKB</strong>
+      </p>
+      <button
+        onClick={initiatePayment}
+        disabled={isLoading}
+        className="inline-flex items-center gap-2 rounded-xl bg-accent px-8 py-3.5 text-base font-semibold text-surface-0 transition-all duration-200 hover:bg-accent-hover hover:shadow-[0_0_24px_oklch(0.75_0.12_85/0.25)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      >
+        {isLoading ? (
+          <>
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-surface-0/30 border-t-surface-0" />
+            Loading…
+          </>
+        ) : (
+          <>
+            Unlock for {price} CKB
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </>
+        )}
+      </button>
+      {error && (
+        <div className="mt-4 rounded-xl bg-error/10 px-4 py-3 text-sm text-error">
+          {error}
+        </div>
+      )}
+    </div>
   );
 }
