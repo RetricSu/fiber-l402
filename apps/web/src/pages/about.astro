@@ -1,0 +1,43 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="About — Retric's thoughts" description="About this blog and how paid content works.">
+  <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
+    <h1 class="text-3xl font-bold tracking-tight mb-8">About</h1>
+
+    <div class="article-content">
+      <p>
+        Hi, I'm <strong>Retric</strong>. This is my personal blog where I write about
+        technology, blockchain, and whatever catches my attention in the digital world.
+      </p>
+
+      <h2>How paid articles work</h2>
+      <p>
+        Some articles on this blog are behind a paywall. Instead of asking you to
+        create an account or subscribe, I use the <strong>L402 protocol</strong> —
+        an HTTP-native payment mechanism powered by the
+        <a href="https://fiber.nervos.org" target="_blank" rel="noopener">Fiber Network</a>
+        on CKB.
+      </p>
+      <p>
+        The flow is simple:
+      </p>
+      <ol>
+        <li>Click "Continue Reading" on a paid article</li>
+        <li>Connect your Fiber node (or copy the invoice to any compatible wallet)</li>
+        <li>Pay the small CKB amount</li>
+        <li>The full article unlocks instantly — no account needed</li>
+      </ol>
+      <p>
+        Your payment proof is cached locally, so you won't be charged again for the
+        same article on the same browser.
+      </p>
+
+      <h2>Get in touch</h2>
+      <p>
+        Find me on <a href="https://github.com/retricsu" target="_blank" rel="noopener">GitHub</a>.
+      </p>
+    </div>
+  </div>
+</Layout>

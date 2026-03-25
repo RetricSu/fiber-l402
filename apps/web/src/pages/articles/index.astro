@@ -8,19 +8,58 @@ try {
   const response = await fetch('http://localhost:3001/api/articles');
   if (!response.ok) throw new Error(`Server returned ${response.status}`);
   articles = await response.json();
+  articles.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 } catch (e) {
   fetchError = 'Unable to load articles. The content server may be offline.';
 }
+
+// Get tag filter from URL
+const url = new URL(Astro.request.url);
+const tagFilter = url.searchParams.get('tag');
+
+// Filter by tag if specified
+if (tagFilter) {
+  articles = articles.filter((a: any) => a.tags?.includes(tagFilter));
+}
+
+// Group articles by year
+const byYear: Record<string, any[]> = {};
+for (const article of articles) {
+  const year = new Date(article.date).getFullYear().toString();
+  if (!byYear[year]) byYear[year] = [];
+  byYear[year].push(article);
+}
+const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a));
+
+// Collect all tags for sidebar
+let allTags: string[] = [];
+try {
+  const response = await fetch('http://localhost:3001/api/articles');
+  if (response.ok) {
+    const all = await response.json();
+    const tagSet = new Set<string>();
+    all.forEach((a: any) => a.tags?.forEach((t: string) => tagSet.add(t)));
+    allTags = Array.from(tagSet).sort();
+  }
+} catch {}
 ---
 
-<Layout title="Articles — Fiber L402">
-  <div class="mx-auto max-w-5xl px-6 py-12 sm:py-16">
-    <!-- Page Header -->
+<Layout title={tagFilter ? `#${tagFilter} — Archive` : "Archive — Retric's thoughts"}>
+  <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
+    <!-- Header -->
     <div class="mb-10">
-      <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Articles</h1>
-      <p class="mt-2 text-text-secondary">
-        In-depth content about Fiber Network, CKB, and the L402 protocol.
-      </p>
+      <h1 class="text-3xl font-bold tracking-tight">Archive</h1>
+      {tagFilter ? (
+        <div class="mt-3 flex items-center gap-2">
+          <span class="text-text-muted">Filtered by</span>
+          <span class="rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent">#{tagFilter}</span>
+          <a href="/articles" class="text-sm text-text-muted hover:text-accent transition-colors no-underline">
+            ✕ Clear
+          </a>
+        </div>
+      ) : (
+        <p class="mt-2 text-text-muted">All articles, organized by time.</p>
+      )}
     </div>
 
     {fetchError && (
@@ -33,45 +72,63 @@ try {
     )}
 
     {!fetchError && articles.length === 0 && (
-      <div class="rounded-xl border border-border bg-surface-2/50 px-6 py-12 text-center">
-        <p class="text-text-muted">No articles available yet. Check back soon.</p>
+      <div class="rounded-xl border border-border px-6 py-12 text-center">
+        <p class="text-text-muted">
+          {tagFilter ? `No articles found with tag "${tagFilter}".` : 'No articles yet.'}
+        </p>
       </div>
     )}
 
-    {!fetchError && articles.length > 0 && (
-      <div class="grid gap-4 sm:grid-cols-2">
-        {articles.map((article: any) => (
-          <a
-            href={`/articles/${article.id}`}
-            class="group relative flex flex-col rounded-2xl border border-border bg-surface-1 p-6 no-underline transition-all duration-200 hover:border-border-hover hover:bg-surface-2/50 hover:shadow-lg hover:shadow-black/10"
-          >
-            <!-- Price badge -->
-            <div class="mb-4 inline-flex self-start rounded-lg bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
-              {article.price} CKB
+    {!fetchError && years.length > 0 && (
+      <div class="space-y-12">
+        {years.map((year) => (
+          <section>
+            <h2 class="mb-4 text-lg font-bold text-text-muted">{year}</h2>
+            <div class="border-l-2 border-border pl-6 space-y-0">
+              {byYear[year].map((article: any) => (
+                <a
+                  href={`/articles/${article.id}`}
+                  class="group flex items-baseline justify-between gap-4 py-3 no-underline transition-colors"
+                >
+                  <div class="flex-1 min-w-0">
+                    <span class="text-base font-medium text-text-primary group-hover:text-accent transition-colors">
+                      {article.title}
+                    </span>
+                    {article.price > 0 && (
+                      <span class="ml-2 text-xs text-accent font-medium">{article.price} CKB</span>
+                    )}
+                    {article.tags && article.tags.length > 0 && (
+                      <span class="ml-2 text-xs text-text-muted">
+                        {article.tags.map((t: string) => `#${t}`).join(' ')}
+                      </span>
+                    )}
+                  </div>
+                  <time class="shrink-0 text-sm text-text-muted tabular-nums">
+                    {new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </time>
+                </a>
+              ))}
             </div>
-
-            <h2 class="mb-2 text-lg font-semibold leading-snug text-text-primary group-hover:text-accent transition-colors duration-200">
-              {article.title}
-            </h2>
-
-            <p class="mb-4 flex-1 text-sm leading-relaxed text-text-secondary line-clamp-3">
-              {article.preview}
-            </p>
-
-            <div class="flex items-center justify-between text-xs text-text-muted">
-              <span>{article.author}</span>
-              <time>{new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</time>
-            </div>
-
-            <!-- Hover arrow -->
-            <div class="absolute right-5 top-6 text-text-muted opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0.5">
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-          </a>
+          </section>
         ))}
       </div>
+    )}
+
+    {/* Tags cloud */}
+    {!fetchError && allTags.length > 0 && (
+      <section class="mt-16 border-t border-border pt-8">
+        <h3 class="mb-4 text-sm font-semibold uppercase tracking-wider text-text-muted">All Tags</h3>
+        <div class="flex flex-wrap gap-2">
+          {allTags.map((tag) => (
+            <a
+              href={`/articles?tag=${encodeURIComponent(tag)}`}
+              class:list={["tag", { "!bg-accent/10 !text-accent": tagFilter === tag }]}
+            >
+              #{tag}
+            </a>
+          ))}
+        </div>
+      </section>
     )}
   </div>
 </Layout>
