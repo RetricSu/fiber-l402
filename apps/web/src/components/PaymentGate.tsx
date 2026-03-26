@@ -40,11 +40,20 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     return () => window.removeEventListener(FIBER_STATE_CHANGE_EVENT, syncConnectionState);
   }, [syncConnectionState]);
 
-  // Check cached credentials
+  // Check cached content or credentials on mount
   useEffect(() => {
-    const checkCachedCredentials = async () => {
+    const checkCache = async () => {
       setIsInitialLoading(true);
       try {
+        // First: try cached content (instant, no server call)
+        const cachedContent = localStorage.getItem(`l402-content-${articleId}`);
+        if (cachedContent) {
+          setArticleContent(cachedContent);
+          setIsPaid(true);
+          setIsInitialLoading(false);
+          return;
+        }
+        // Fallback: try cached credentials (needs server verification)
         const cached = localStorage.getItem(`l402-${articleId}`);
         if (cached) {
           const { macaroon, preimage } = JSON.parse(cached);
@@ -56,7 +65,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
         setIsInitialLoading(false);
       }
     };
-    checkCachedCredentials();
+    checkCache();
   }, [articleId]);
 
   const fetchContent = async (macaroon: string, preimage: string) => {
@@ -76,6 +85,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
       const article = await response.json();
       setIsPaid(true);
       setArticleContent(article.content);
+      localStorage.setItem(`l402-content-${articleId}`, article.content);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -101,6 +111,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
       const article = await response.json();
       setIsPaid(true);
       setArticleContent(article.content);
+      localStorage.setItem(`l402-content-${articleId}`, article.content);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -122,6 +133,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
         const article = await response.json();
         setIsPaid(true);
         setArticleContent(article.content);
+        localStorage.setItem(`l402-content-${articleId}`, article.content);
       } else {
         throw new Error(`Unexpected response: ${response.status}`);
       }
