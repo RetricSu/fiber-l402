@@ -13,12 +13,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fiber-l402/types": "workspace:*",
-    "@fiber-pay/sdk": "0.1.0",
+    "@fiber-l402/sdk": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
-    "express": "^4.21.0",
-    "macaroon": "^3.0.4"
+    "express": "^4.21.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.0",

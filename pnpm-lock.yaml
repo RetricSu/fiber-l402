@@ -29,12 +29,9 @@ importers:
 
   apps/proxy:
     dependencies:
-      '@fiber-l402/types':
+      '@fiber-l402/sdk':
         specifier: workspace:*
-        version: link:../../packages/types
-      '@fiber-pay/sdk':
-        specifier: 0.1.0
-        version: 0.1.0
+        version: link:../../packages/sdk
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -44,9 +41,6 @@ importers:
       express:
         specifier: ^4.21.0
         version: 4.22.1
-      macaroon:
-        specifier: ^3.0.4
-        version: 3.0.4
     devDependencies:
       '@types/cors':
         specifier: ^2.8.0
@@ -72,9 +66,9 @@ importers:
       '@astrojs/react':
         specifier: ^4.0.0
         version: 4.4.2(@types/node@20.19.37)(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tsx@4.21.0)
-      '@fiber-l402/types':
+      '@fiber-l402/sdk':
         specifier: workspace:*
-        version: link:../../packages/types
+        version: link:../../packages/sdk
       '@fiber-pay/sdk':
         specifier: 0.1.0
         version: 0.1.0
@@ -84,6 +78,9 @@ importers:
       astro:
         specifier: ^5.0.0
         version: 5.18.1(@types/node@20.19.37)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.60.0)(tsx@4.21.0)(typescript@5.9.3)
+      marked:
+        specifier: ^17.0.5
+        version: 17.0.5
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -101,10 +98,26 @@ importers:
         specifier: ^18.3.1
         version: 18.3.7(@types/react@18.3.28)
 
-  packages/types:
+  packages/sdk:
+    dependencies:
+      '@fiber-pay/sdk':
+        specifier: 0.1.0
+        version: 0.1.0
+      express:
+        specifier: ^4.0.0 || ^5.0.0
+        version: 4.22.1
+      macaroon:
+        specifier: ^3.0.4
+        version: 3.0.4
     devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.37
       typescript:
-        specifier: ^5.6.0
+        specifier: ^5.6.3
         version: 5.9.3
 
 packages:
@@ -1963,6 +1976,11 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
+
+  marked@17.0.5:
+    resolution: {integrity: sha512-6hLvc0/JEbRjRgzI6wnT2P1XuM1/RrrDEX0kPt0N7jGm1133g6X7DlxFasUIx+72aKAr904GTxhSLDrd5DIlZg==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -4659,6 +4677,8 @@ snapshots:
       semver: 7.7.4
 
   markdown-table@3.0.4: {}
+
+  marked@17.0.5: {}
 
   math-intrinsics@1.1.0: {}
 

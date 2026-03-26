@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Article } from '@fiber-l402/types';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { Article } from '@fiber-l402/sdk';
 import { FiberRpcClient } from '@fiber-pay/sdk';
+import { marked } from 'marked';
 import { FIBER_STATE_CHANGE_EVENT } from './FiberConnectButton';
 
 const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
@@ -201,6 +202,11 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
 
   // ─── Render States ───
 
+  const renderedHtml = useMemo(() => {
+    if (!articleContent) return '';
+    return marked.parse(articleContent, { async: false }) as string;
+  }, [articleContent]);
+
   // Initial loading: skeleton
   if (isInitialLoading) {
     return (
@@ -218,10 +224,10 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
   if (isPaid) {
     return (
       <>
-        {articleContent && (
+        {renderedHtml && (
           <div
             className="article-content"
-            dangerouslySetInnerHTML={{ __html: articleContent }}
+            dangerouslySetInnerHTML={{ __html: renderedHtml }}
           />
         )}
         {/* Article footer */}

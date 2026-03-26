@@ -1,4 +1,4 @@
-import type { Invoice } from '@fiber-l402/types';
+import type { Invoice } from './types.js';
 import { FiberRpcClient, type CkbInvoice, type HashAlgorithm } from '@fiber-pay/sdk';
 
 export interface InvoiceServiceConfig {
