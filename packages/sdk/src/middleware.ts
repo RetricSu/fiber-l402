@@ -1,8 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { L402Request, L402MiddlewareConfig } from '../types/l402.js';
-import { MacaroonService } from '../services/macaroon.js';
-import { InvoiceService } from '../services/invoice.js';
-import type { ProtectedResourceInfo } from '../resources/types.js';
+import type { L402Request, L402MiddlewareConfig, ProtectedResourceInfo } from './types.js';
+import { MacaroonService } from './macaroon.js';
+import { InvoiceService } from './invoice.js';
 
 interface L402ResourceResolver {
   resolve(req: Request): Promise<ProtectedResourceInfo | undefined>;

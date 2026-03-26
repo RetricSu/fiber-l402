@@ -157,7 +157,7 @@ export function FiberConnectButton() {
       ) : (
         <button
           onClick={() => { setIsModalOpen(true); setConnectError(null); }}
-          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-surface-0 transition-all duration-200 hover:bg-accent-hover hover:shadow-[0_0_20px_oklch(0.75_0.12_85/0.25)] cursor-pointer"
+          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-accent-hover hover:shadow-lg cursor-pointer"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -169,7 +169,7 @@ export function FiberConnectButton() {
       {/* Modal */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-999 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-999 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
           onClick={() => setIsModalOpen(false)}
         >
           <div
@@ -214,11 +214,11 @@ export function FiberConnectButton() {
               <button
                 onClick={connect}
                 disabled={isConnecting}
-                className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-surface-0 transition-all duration-200 hover:bg-accent-hover disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-accent-hover disabled:opacity-50 cursor-pointer"
               >
                 {isConnecting ? (
                   <>
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-surface-0/30 border-t-surface-0" />
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                     Connecting…
                   </>
                 ) : (

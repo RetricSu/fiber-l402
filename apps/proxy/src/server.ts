@@ -1,10 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { L402Middleware } from './middleware/l402.js';
+import {
+  L402Middleware,
+  DefaultResourceResolverRegistry,
+  type Article,
+} from '@fiber-l402/sdk';
 import { ArticleService } from './services/article.js';
-import type { Article } from '@fiber-l402/types';
-import { DefaultResourceResolverRegistry, ArticleContentResolver } from './resources/index.js';
+import { ArticleContentResolver } from './resources/resolvers/article-content.js';
 
 dotenv.config();
 

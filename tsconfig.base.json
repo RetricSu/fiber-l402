@@ -13,8 +13,8 @@
     "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@fiber-l402/types": ["./packages/types/src"],
-      "@fiber-l402/types/*": ["./packages/types/src/*"]
+      "@fiber-l402/sdk": ["./packages/sdk/src"],
+      "@fiber-l402/sdk/*": ["./packages/sdk/src/*"]
     }
   },
   "include": ["packages/*/src/**/*", "apps/*/src/**/*"],

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, parse } from 'path';
 import { fileURLToPath } from 'url';
-import type { Article } from '@fiber-l402/types';
+import type { Article } from '@fiber-l402/sdk';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 

@@ -19,9 +19,15 @@ try {
     error = 'The content server is currently unreachable. Please try again later.';
   }
 }
+
+// Estimate reading time (~200 words/min for English)
+function estimateReadingTime(preview: string): string {
+  // Since we only have the preview, give a rough estimate
+  return '5 min read';
+}
 ---
 
-<Layout title={article?.title || 'Error — Fiber L402'}>
+<Layout title={article?.title ? `${article.title} — Retric's thoughts` : "Error — Retric's thoughts"} description={article?.preview}>
   <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
     {error && (
       <div class="rounded-2xl border border-error/20 bg-error/5 px-8 py-12 text-center">
@@ -35,7 +41,7 @@ try {
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Back to articles
+          Back to archive
         </a>
       </div>
     )}
@@ -46,41 +52,48 @@ try {
         <nav class="mb-8">
           <a
             href="/articles"
-            class="inline-flex items-center gap-1.5 text-sm text-text-muted no-underline transition-colors hover:text-text-secondary"
+            class="inline-flex items-center gap-1.5 text-sm text-text-muted no-underline transition-colors hover:text-text-primary"
           >
             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            All articles
+            Archive
           </a>
         </nav>
 
         <!-- Article Header -->
         <header class="mb-10">
-          <div class="mb-4 flex flex-wrap gap-2">
-            {article.tags.map((tag: string) => (
-              <span class="rounded-lg bg-surface-3 px-2.5 py-1 text-xs font-medium text-text-secondary">
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          <h1 class="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+          <h1 class="text-3xl font-bold leading-tight tracking-tight sm:text-4xl" style="line-height: 1.3;">
             {article.title}
           </h1>
 
-          <div class="mt-4 flex items-center gap-3 text-sm text-text-muted">
-            <span>{article.author}</span>
-            <span class="h-1 w-1 rounded-full bg-text-muted" />
+          <div class="mt-5 flex flex-wrap items-center gap-3 text-sm text-text-muted">
             <time>{new Date(article.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</time>
+            <span class="h-1 w-1 rounded-full bg-text-muted" />
+            <span>{estimateReadingTime(article.preview)}</span>
+            {article.price > 0 && (
+              <>
+                <span class="h-1 w-1 rounded-full bg-text-muted" />
+                <span class="text-accent font-medium">{article.price} CKB</span>
+              </>
+            )}
           </div>
+
+          <!-- Tags -->
+          {article.tags && article.tags.length > 0 && (
+            <div class="mt-4 flex flex-wrap gap-2">
+              {article.tags.map((tag: string) => (
+                <a href={`/articles?tag=${encodeURIComponent(tag)}`} class="tag">
+                  #{tag}
+                </a>
+              ))}
+            </div>
+          )}
         </header>
 
-        <!-- Preview -->
-        <div class="mb-8 rounded-xl border border-border bg-surface-1 p-6">
-          <p class="text-base leading-relaxed text-text-secondary italic">
-            {article.preview}
-          </p>
+        <!-- Preview as natural article opening -->
+        <div class="mb-0" style="font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.9; color: var(--color-text-secondary);">
+          <p>{article.preview}</p>
         </div>
 
         <!-- Payment Gate + Content -->
@@ -93,7 +106,3 @@ try {
     )}
   </div>
 </Layout>
-
-<style>
-  /* No scoped styles needed — article content typography is in global.css */
-</style>
