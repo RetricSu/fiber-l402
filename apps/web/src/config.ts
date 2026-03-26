@@ -19,5 +19,5 @@ export const siteConfig = {
   github: "https://github.com/retricsu",
 
   /** Base URL of the L402 proxy API server */
-  apiBaseUrl: "http://localhost:3001",
+  apiBaseUrl: import.meta.env.PUBLIC_API_URL || "http://localhost:3001",
 };

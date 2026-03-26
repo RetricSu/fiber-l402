@@ -16,7 +16,21 @@ const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: process.env.WEB_URL || 'http://localhost:4321',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. server-to-server or Postman)
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = 
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || 
+      /^https:\/\/.*\.vercel\.app$/.test(origin) ||
+      origin === process.env.WEB_URL;
+      
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
