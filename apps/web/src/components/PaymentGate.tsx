@@ -3,6 +3,7 @@ import type { Article } from '@fiber-l402/sdk';
 import { FiberRpcClient } from '@fiber-pay/sdk';
 import { marked } from 'marked';
 import { FIBER_STATE_CHANGE_EVENT } from './FiberConnectButton';
+import { siteConfig } from '../config';
 
 const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
 const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
@@ -72,7 +73,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:3001/api/articles/${articleId}/content`, {
+      const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${articleId}/content`, {
         headers: { 'Authorization': `L402 ${macaroon}:${preimage}` },
       });
       if (response.status === 402) {
@@ -97,7 +98,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:3001/api/articles/${articleId}/content`, {
+      const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${articleId}/content`, {
         headers: {
           Authorization: `L402 ${macaroon}`,
           ...(paymentHash ? { 'X-L402-Payment-Hash': paymentHash } : {}),
@@ -125,7 +126,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:3001/api/articles/${articleId}/content`);
+      const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${articleId}/content`);
       if (response.status === 402) {
         const data = await response.json();
         setChallenge({ macaroon: data.macaroon, invoice: data.invoice });
@@ -218,6 +219,12 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     if (!articleContent) return '';
     return marked.parse(articleContent, { async: false }) as string;
   }, [articleContent]);
+
+  // Hide the server-rendered preview when article is unlocked to avoid duplicate first paragraph
+  useEffect(() => {
+    const previewEl = document.getElementById('article-preview');
+    if (previewEl) previewEl.style.display = isPaid ? 'none' : '';
+  }, [isPaid]);
 
   // Initial loading: skeleton
   if (isInitialLoading) {

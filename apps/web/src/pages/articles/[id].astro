@@ -1,13 +1,14 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { PaymentGate } from '../../components/PaymentGate.tsx';
+import { siteConfig } from '../../config';
 
 const { id } = Astro.params;
 let article = null;
 let error = null;
 
 try {
-  const response = await fetch(`http://localhost:3001/api/articles/${id}`);
+  const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${id}`);
   if (!response.ok) {
     if (response.status === 404) throw new Error('Article not found');
     throw new Error(`Server error: ${response.status}`);
@@ -27,7 +28,7 @@ function estimateReadingTime(preview: string): string {
 }
 ---
 
-<Layout title={article?.title ? `${article.title} — Retric's thoughts` : "Error — Retric's thoughts"} description={article?.preview}>
+<Layout title={article?.title ? `${article.title} — ${siteConfig.title}` : `Error — ${siteConfig.title}`} description={article?.preview}>
   <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
     {error && (
       <div class="rounded-2xl border border-error/20 bg-error/5 px-8 py-12 text-center">
@@ -92,7 +93,7 @@ function estimateReadingTime(preview: string): string {
         </header>
 
         <!-- Preview as natural article opening -->
-        <div class="mb-0" style="font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.9; color: var(--color-text-secondary);">
+        <div id="article-preview" class="mb-0" style="font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.9; color: var(--color-text-secondary);">
           <p>{article.preview}</p>
         </div>
 

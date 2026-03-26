@@ -1,11 +1,12 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { siteConfig } from '../../config';
 
 let articles: any[] = [];
 let fetchError: string | null = null;
 
 try {
-  const response = await fetch('http://localhost:3001/api/articles');
+  const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles`);
   if (!response.ok) throw new Error(`Server returned ${response.status}`);
   articles = await response.json();
   articles.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -34,7 +35,7 @@ const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a));
 // Collect all tags for sidebar
 let allTags: string[] = [];
 try {
-  const response = await fetch('http://localhost:3001/api/articles');
+  const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles`);
   if (response.ok) {
     const all = await response.json();
     const tagSet = new Set<string>();
@@ -44,7 +45,7 @@ try {
 } catch {}
 ---
 
-<Layout title={tagFilter ? `#${tagFilter} — Archive` : "Archive — Retric's thoughts"}>
+<Layout title={tagFilter ? `#${tagFilter} — Archive` : `Archive — ${siteConfig.title}`}>
   <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
     <!-- Header -->
     <div class="mb-10">

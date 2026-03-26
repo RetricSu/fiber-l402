@@ -1,0 +1,117 @@
+---
+id: "make-selfhost-great-again"
+title: "Make Self-Host Great Again: How I Use Fiber and OpenClaw to Run a Podcast Payment Service"
+author: "RetricSu"
+date: "2026-03-20"
+price: 0.1
+tags: ["selfhost", "fiber", "openclaw", "podcast", "micropayment"]
+---
+
+An experiment about running a streaming micropayment business on a home-built PC, without public IP, and managing it through Discord (with a little help from AI agent).
+
+## TL;DR
+
+I built [Fiber Audio Player](https://fiber-audio-player.vercel.app/) - a self-hosted podcast platform with per-second micropayments. It runs on a home-assembled PC (8GB RAM, 200+GB SSD, ~¥500), integrates a fiber testnet node, uses Cloudflare Tunnel (no public IP needed), and can be managed through an AI agent on Discord. The tech stack: Fiber Network for payments, OpenClaw for operations, and a simple CLI for content management.
+
+This isn't about saving money - it's about autonomy. Total control over your infrastructure, your payments, your data. In an era of platform dependency, self-hosting is a statement of independence.
+
+## Why Self-Host in 2026?
+
+The cheapest option is trusting centralized platforms. They handle scaling, backups, legal compliance, and customer support for "free" (while taking 30-50% of your revenue). If cost is your only concern, stop reading now and go sign up for Spotify/Apple Podcasts.
+
+But if you believe in:
+
+- **Data sovereignty** - your audience relationships (or anonymous) belong to you
+- **Censorship resistance** - no platform can demonetize you overnight
+- **Protocol-level ownership** - payments flow directly, not through intermediaries
+- **The joy of understanding** - knowing exactly how your business works
+
+Then this is the fun project that actually has the potential to turn into a real business.
+
+## The Stack
+
+Here's what I'm actually running:
+
+**The Hardware: A Home-Built PC.** I assembled a small PC that sits in my living room. My data lives on hardware I can touch, in a location I control, running software I can audit. No terms of service changes, no account suspensions, no "we've updated our privacy policy."
+
+**The Payment Layer: [Fiber Network](https://github.com/nervosnetwork/fiber).** It's a Lightning Network-style payment channel system on Nervos CKB. I run a fiber node on the same machine hosting the podcast service. It is currently on testnet, but I am looking forward to upgrading it to mainnet when the fiber-audio-player service is production-ready.
+
+One thing worth noticing here is that the payment is not a direct channel payment between users and developer. The developer runs an unannounced node (which doesn't have a public IP and is a home node), the users also run an unannounced home node, they both connected to and opened a channel with a public testnet node. The payment arrives with multi-hop. This showcases the network effect for fiber. It also lowers the entry boundary since developers and users both don't need to run an announced node with public IP.
+
+**The Podcast Service.** Fiber Audio Player is open-source software: Next.js frontend + Hono backend that handles:
+
+- Audio streaming with HLS encryption
+- Payment verification via Fiber RPC
+- SQLite database for podcasts/episodes
+- Admin API for content management
+- FFmpeg transcodes audio to streaming format
+
+I use Cloudflare Tunnel to expose the fiber-audio-player services through Cloudflare's edge network. So I don't need a public IP but only a cheap domain name.
+
+### The Operator: OpenClaw
+
+This is where it gets magical. I run [OpenClaw](https://github.com/openclaw/openclaw) - a self-hosted AI agent that connects to Discord. Instead of SSHing into my home PC or memorizing CLI commands, I just message my Discord bot.
+
+How it works:
+
+1. OpenClaw reads the project documentation I provide
+2. It has access to the built-in `fap` CLI tool for podcast management
+3. It can check PM2 logs and system status
+4. I interact with it through natural language in Discord
+
+It's like having a DevOps engineer who knows my entire stack living in my Discord server.
+
+OpenClaw doesn't magically know my system. I provide it with documentation in the fiber-audio-player repo like the devops manual and backend API docs. And all of this works because I also built a proper CLI tool (`fap` - Fiber Audio Player CLI) that OpenClaw can use:
+
+```bash
+# Authentication
+fap auth login --api-key <key> --backend-url http://localhost:8787
+
+# Podcast management
+fap podcast create --title "Tech Talk" --description "Weekly tech discussions"
+fap podcast list
+
+# Episode workflow
+fap episode create \
+  --podcast-id <id> \
+  --title "Episode 42" \
+  --file ./audio.mp3 \
+  --price-per-second 10000 \
+  --wait \
+  --publish
+
+# Monitoring
+fap episode list --status processing
+fap episode get <id>
+```
+
+Once OpenClaw is integrated, even the minimal maintenance becomes conversational. It lowers the barriers to entry for self-hosting. This is the best thing AI agent brings.
+
+We're entering an era where infrastructure becomes conversational. The complexity hasn't disappeared - it's been abstracted behind AI agents that speak human language. And thanks to the Fiber network, the economic feedback loop for self-hosting finally has its missing piece.
+
+## Try It Yourself
+
+Want to run your own? Quick start:
+
+```bash
+git clone https://github.com/retricsu/fiber-audio-player.git
+cd fiber-audio-player
+pnpm install
+pnpm build
+```
+
+## Conclusion
+
+The future of content creation isn't platforms - it's personal infrastructure. With Fiber Network for payments, OpenClaw for operations, and a home-built PC, you can run a sovereign business that you fully control.
+
+This isn't just about podcasts. The same architecture works for:
+
+- Video streaming
+- Newsletter subscriptions
+- Digital downloads
+- API services
+- Any content business
+
+The tools are here. The protocols are mature. The AI assistance makes it manageable.
+
+Make self-host great again.

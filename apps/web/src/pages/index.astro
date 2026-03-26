@@ -1,11 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { siteConfig } from '../config';
 
 let articles: any[] = [];
 let fetchError: string | null = null;
 
 try {
-  const response = await fetch('http://localhost:3001/api/articles');
+  const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles`);
   if (!response.ok) throw new Error(`Server returned ${response.status}`);
   articles = await response.json();
   // Sort by date descending
@@ -15,13 +16,13 @@ try {
 }
 ---
 
-<Layout title="Retric's thoughts — wondering in the digi land.">
+<Layout title={`${siteConfig.title} — ${siteConfig.tagline}`}>
   <div class="mx-auto max-w-3xl px-6 py-16 sm:py-20">
     <!-- Blog intro -->
     <section class="mb-16">
-      <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Retric's thoughts</h1>
+      <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{siteConfig.tagline}</h1>
       <p class="mt-3 text-lg text-text-muted" style="font-family: var(--font-serif); font-style: italic;">
-        wondering in the digi land.
+        {siteConfig.description}
       </p>
     </section>
 

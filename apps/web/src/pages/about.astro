@@ -1,14 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { siteConfig } from '../config';
 ---
 
-<Layout title="About — Retric's thoughts" description="About this blog and how paid content works.">
+<Layout title={`About — ${siteConfig.title}`} description="About this blog and how paid content works.">
   <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
     <h1 class="text-3xl font-bold tracking-tight mb-8">About</h1>
 
     <div class="article-content">
       <p>
-        Hi, I'm <strong>Retric</strong>. This is my personal blog where I write about
+        Hi, I'm <strong>{siteConfig.author}</strong>. This is my personal blog where I write about
         technology, blockchain, and whatever catches my attention in the digital world.
       </p>
 
@@ -36,7 +37,7 @@ import Layout from '../layouts/Layout.astro';
 
       <h2>Get in touch</h2>
       <p>
-        Find me on <a href="https://github.com/retricsu" target="_blank" rel="noopener">GitHub</a>.
+        Find me on <a href={siteConfig.github} target="_blank" rel="noopener">GitHub</a>.
       </p>
     </div>
   </div>
