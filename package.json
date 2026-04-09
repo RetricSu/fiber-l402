@@ -15,7 +15,7 @@
     "dev": "pnpm -r --parallel dev",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:unit": "vitest run --project packages/*",
+    "test:unit": "vitest run --project apps/proxy",
     "test:integration": "vitest run --project apps/proxy",
     "test:e2e": "echo 'E2E tests use Playwright'",
     "test:coverage": "vitest run --coverage",

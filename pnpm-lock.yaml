@@ -29,9 +29,9 @@ importers:
 
   apps/proxy:
     dependencies:
-      '@fiber-l402/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
+      '@fiber-pay/sdk':
+        specifier: 0.2.0
+        version: 0.2.0(express@4.22.1)
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -66,12 +66,9 @@ importers:
       '@astrojs/react':
         specifier: ^4.0.0
         version: 4.4.2(@types/node@20.19.37)(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tsx@4.21.0)
-      '@fiber-l402/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
       '@fiber-pay/sdk':
-        specifier: 0.1.0
-        version: 0.1.0
+        specifier: 0.2.0
+        version: 0.2.0(express@4.22.1)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@6.4.1(@types/node@20.19.37)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0))
@@ -100,28 +97,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.1
         version: 18.3.7(@types/react@18.3.28)
-
-  packages/sdk:
-    dependencies:
-      '@fiber-pay/sdk':
-        specifier: 0.1.0
-        version: 0.1.0
-      express:
-        specifier: ^4.0.0 || ^5.0.0
-        version: 4.22.1
-      macaroon:
-        specifier: ^3.0.4
-        version: 3.0.4
-    devDependencies:
-      '@types/express':
-        specifier: ^5.0.0
-        version: 5.0.6
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.37
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
 
 packages:
 
@@ -576,9 +551,17 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fiber-pay/sdk@0.1.0':
-    resolution: {integrity: sha512-N//V1foA1dgf/YE/5zDXN4rVPWx9j+S8EWLr708NgX+Jeks+sRdqUTR0YchGxBQPPulAX8YEgJEc6dmcW4cxLg==}
+  '@fiber-pay/sdk@0.2.0':
+    resolution: {integrity: sha512-HwI7CpeX5vFZ4SwIfK+V2jc8KYm5GH0AaLlhOLTG7/ZJzbbyvjRJYNAMO4YHtzZ/UEmBQRfs+DHv7QZinIfUgg==}
     engines: {node: '>=20'}
+    peerDependencies:
+      '@nervosnetwork/fiber-js': ~0.8.0
+      express: ^4.0.0 || ^5.0.0
+    peerDependenciesMeta:
+      '@nervosnetwork/fiber-js':
+        optional: true
+      express:
+        optional: true
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -3584,10 +3567,13 @@ snapshots:
   '@esbuild/win32-x64@0.27.4':
     optional: true
 
-  '@fiber-pay/sdk@0.1.0':
+  '@fiber-pay/sdk@0.2.0(express@4.22.1)':
     dependencies:
       '@noble/hashes': 2.0.1
+      macaroon: 3.0.4
       zod: 4.3.6
+    optionalDependencies:
+      express: 4.22.1
 
   '@img/colour@1.1.0':
     optional: true

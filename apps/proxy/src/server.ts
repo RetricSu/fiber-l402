@@ -4,10 +4,10 @@ import dotenv from 'dotenv';
 import {
   L402Middleware,
   DefaultResourceResolverRegistry,
-  type Article,
-} from '@fiber-l402/sdk';
+} from '@fiber-pay/sdk';
 import { ArticleService } from './services/article.js';
 import { ArticleContentResolver } from './resources/resolvers/article-content.js';
+import type { Article } from './types/article.js';
 
 dotenv.config();
 
@@ -43,6 +43,7 @@ const resourceResolverRegistry = new DefaultResourceResolverRegistry([
 
 const l402Middleware = new L402Middleware({
   rootKey: process.env.L402_ROOT_KEY,
+  rpcUrl: process.env.FIBER_RPC_URL,
   priceCkb: Number(process.env.ARTICLE_PRICE_CKB || '0.1'),
   expirySeconds: parseInt(process.env.L402_EXPIRY_SECONDS || '3600', 10),
   resourceResolver: resourceResolverRegistry,

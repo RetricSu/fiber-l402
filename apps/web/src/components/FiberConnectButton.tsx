@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FiberRpcClient } from '@fiber-pay/sdk';
+import { FiberRpcBrowserClient } from '../lib/fiber-rpc-browser';
 
 const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
 const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
@@ -27,7 +27,7 @@ export function FiberConnectButton() {
       setIsConnected(true);
       // Re-validate connection on mount
       if (savedUrl) {
-        const client = new FiberRpcClient({ url: savedUrl, timeout: 5000 });
+        const client = new FiberRpcBrowserClient(savedUrl);
         client.nodeInfo().then((info) => {
           setNode({ nodeId: info.node_id, chainHash: info.chain_hash });
         }).catch(() => {
@@ -50,7 +50,7 @@ export function FiberConnectButton() {
     setConnectError(null);
 
     try {
-      const client = new FiberRpcClient({ url, timeout: 8000 });
+      const client = new FiberRpcBrowserClient(url);
       const info = await client.nodeInfo();
       setNode({ nodeId: info.node_id, chainHash: info.chain_hash });
       setIsConnected(true);

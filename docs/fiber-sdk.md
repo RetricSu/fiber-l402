@@ -4,11 +4,11 @@
 
 | Property | Value |
 |----------|-------|
-| Package | `@fiber-pay/sdk@0.1.0` |
+| Package | `@fiber-pay/sdk@0.2.0` |
 | Status | **AVAILABLE** |
 | Module Type | ESM (type: "module") |
 | Install | `pnpm add @fiber-pay/sdk` |
-| Target Fiber Version | v0.7.1 |
+| Target Fiber Version | v0.8.0 |
 | Node.js Requirement | >= 20 |
 
 ## Installation
@@ -31,7 +31,7 @@ Primary class for interacting with Fiber Network nodes.
 import { FiberRpcClient } from '@fiber-pay/sdk';
 
 const client = new FiberRpcClient({
-  url: 'http://127.0.0.1:8227',
+  url: 'http://127.0.0.1:8229',
   biscuitToken: process.env.FIBER_RPC_BISCUIT_TOKEN, // optional
   timeout: 30000, // optional, default 30s
   headers: {}, // optional custom headers
@@ -171,7 +171,7 @@ If SDK is unavailable, use direct JSON-RPC calls:
 ### Example: Get Node Info
 
 ```bash
-curl -X POST http://localhost:8227 \
+curl -X POST http://localhost:8229 \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -202,14 +202,14 @@ curl -X POST http://localhost:8227 \
 
 | Property | Value |
 |----------|-------|
-| Endpoint | `http://localhost:8227` |
+| Endpoint | `http://localhost:8229` |
 | Status | **NOT CONNECTED** |
 | Error | Connection refused (HTTP 000) |
 
 ### Test Command
 
 ```bash
-curl -X POST http://localhost:8227 \
+curl -X POST http://localhost:8229 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"node_info","params":[],"id":1}'
 ```
@@ -218,7 +218,7 @@ curl -X POST http://localhost:8227 \
 
 ```bash
 # Example Fiber node startup
-fiber-node --config config.yml --rpc-port 8227
+fiber-node --config config.yml --rpc-port 8229
 ```
 
 ## Biscuit Authentication
@@ -227,7 +227,7 @@ The SDK supports Biscuit tokens for RPC authentication:
 
 ```typescript
 const client = new FiberRpcClient({
-  url: 'http://127.0.0.1:8227',
+  url: 'http://127.0.0.1:8229',
   biscuitToken: 'your-biscuit-token',
 });
 ```
@@ -288,7 +288,7 @@ class InvoiceService {
 ## Important Notes
 
 1. **ESM Only**: The SDK is ES Module only. Use `import` syntax.
-2. **HashAlgorithm Mapping**: The SDK uses PascalCase (`CkbHash`, `Sha256`) but Fiber v0.7.1 RPC expects snake_case (`ckb_hash`, `sha256`). The SDK handles this mapping internally.
+2. **HashAlgorithm Mapping**: The SDK handles hash algorithm compatibility across Fiber v0.8.0 RPC variants.
 3. **Biscuit Security**: Keep Biscuit tokens server-side; avoid embedding in browser bundles.
 4. **Local Node Required**: The SDK requires a running Fiber node at the configured RPC endpoint.
 
@@ -296,4 +296,4 @@ class InvoiceService {
 
 - [Fiber Network Repo](https://github.com/nervosnetwork/fiber)
 - [SDK NPM Package](https://www.npmjs.com/package/@fiber-pay/sdk)
-- [Fiber RPC Spec](https://github.com/nervosnetwork/fiber/blob/v0.7.1/crates/fiber-lib/src/rpc/README.md)
+- [Fiber RPC Spec](https://github.com/nervosnetwork/fiber/blob/v0.8.0/crates/fiber-lib/src/rpc/README.md)
