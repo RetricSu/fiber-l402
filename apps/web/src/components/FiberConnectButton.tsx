@@ -10,6 +10,32 @@ interface FiberNodeSummary {
   chainHash: string;
 }
 
+type NodeInfoLike = {
+  node_id?: unknown;
+  pubkey?: unknown;
+  chain_hash?: unknown;
+  chainHash?: unknown;
+};
+
+function toNodeSummary(info: NodeInfoLike): FiberNodeSummary | null {
+  const nodeId = typeof info.node_id === 'string'
+    ? info.node_id
+    : typeof info.pubkey === 'string'
+      ? info.pubkey
+      : undefined;
+  const chainHash = typeof info.chain_hash === 'string'
+    ? info.chain_hash
+    : typeof info.chainHash === 'string'
+      ? info.chainHash
+      : undefined;
+
+  if (!nodeId || !chainHash) {
+    return null;
+  }
+
+  return { nodeId, chainHash };
+}
+
 export function FiberConnectButton() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [rpcUrl, setRpcUrl] = useState('http://127.0.0.1:8229');
@@ -29,7 +55,11 @@ export function FiberConnectButton() {
       if (savedUrl) {
         const client = new FiberRpcBrowserClient(savedUrl);
         client.nodeInfo().then((info) => {
-          setNode({ nodeId: info.node_id, chainHash: info.chain_hash });
+          const parsed = toNodeSummary(info);
+          if (!parsed) {
+            throw new Error('Invalid node_info response');
+          }
+          setNode(parsed);
         }).catch(() => {
           setIsConnected(false);
           localStorage.setItem(FIBER_CONNECTED_KEY, 'false');
@@ -52,7 +82,12 @@ export function FiberConnectButton() {
     try {
       const client = new FiberRpcBrowserClient(url);
       const info = await client.nodeInfo();
-      setNode({ nodeId: info.node_id, chainHash: info.chain_hash });
+      const parsed = toNodeSummary(info);
+      if (!parsed) {
+        throw new Error('Connected, but node_info response was incomplete');
+      }
+
+      setNode(parsed);
       setIsConnected(true);
       setIsModalOpen(false);
       setShowDropdown(false);
