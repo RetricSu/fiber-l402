@@ -10,13 +10,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": ".",
-    "baseUrl": ".",
-    "paths": {
-      "@fiber-l402/sdk": ["./packages/sdk/src"],
-      "@fiber-l402/sdk/*": ["./packages/sdk/src/*"]
-    }
+    "rootDir": "."
   },
-  "include": ["packages/*/src/**/*", "apps/*/src/**/*"],
+  "include": ["apps/*/src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

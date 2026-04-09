@@ -1,6 +1,7 @@
 import type { Request } from 'express';
-import type { Article, ProtectedResourceInfo, ResourceResolver } from '@fiber-l402/sdk';
+import type { ProtectedResourceInfo, ResourceResolver } from '@fiber-pay/sdk';
 import type { ArticleService } from '../../services/article.js';
+import type { Article } from '../../types/article.js';
 
 type ArticleLookupService = Pick<ArticleService, 'getById'>;
 

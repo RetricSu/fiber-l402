@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Article } from '@fiber-l402/sdk';
-import { FiberRpcClient } from '@fiber-pay/sdk';
 import { marked } from 'marked';
 import { FIBER_STATE_CHANGE_EVENT } from './FiberConnectButton';
 import { siteConfig } from '../config';
+import { FiberRpcBrowserClient } from '../lib/fiber-rpc-browser';
 
 const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
 const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
@@ -166,7 +165,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     setError(null);
 
     try {
-      const client = new FiberRpcClient({ url: rpcUrl, timeout: 20000 });
+      const client = new FiberRpcBrowserClient(rpcUrl);
       const paymentResult = await client.sendPayment({
         invoice: challenge.invoice,
         allow_self_payment: true,
