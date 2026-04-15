@@ -53,7 +53,7 @@ const client = new FiberRpcClient({
 | Method | Description | Params |
 |--------|-------------|--------|
 | `connectPeer(params)` | Connect to a peer | `{ address: Multiaddr, save?: boolean }` |
-| `disconnectPeer(params)` | Disconnect from a peer | `{ peer_id: PeerId }` |
+| `disconnectPeer(params)` | Disconnect from a peer | `{ pubkey: Pubkey }` |
 | `listPeers()` | List all connected peers | - |
 | `openChannel(params)` | Open a new channel | `OpenChannelParams` |
 | `acceptChannel(params)` | Accept channel opening | `AcceptChannelParams` |
