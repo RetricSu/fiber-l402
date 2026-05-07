@@ -3,6 +3,12 @@ import { marked } from 'marked';
 import { FIBER_STATE_CHANGE_EVENT } from './FiberConnectButton';
 import { siteConfig } from '../config';
 import { FiberRpcBrowserClient } from '../lib/fiber-rpc-browser';
+import {
+  X402Client,
+  getCachedX402Credentials,
+  cacheX402Credentials,
+  clearX402Credentials,
+} from '../lib/x402-client';
 
 const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
 const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
@@ -10,14 +16,16 @@ const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
 interface PaymentGateProps {
   articleId: string;
   price: number;
+  content: string;
+  payTo: string;
 }
 
 interface PaymentChallenge {
-  macaroon: string;
   invoice: string;
+  paymentHash: string;
 }
 
-export function PaymentGate({ articleId, price }: PaymentGateProps) {
+export function PaymentGate({ articleId, price, content, payTo }: PaymentGateProps) {
   const [challenge, setChallenge] = useState<PaymentChallenge | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -26,9 +34,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
   const [isFiberConnected, setIsFiberConnected] = useState(false);
   const [isAutoPaying, setIsAutoPaying] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [articleContent, setArticleContent] = useState<string | null>(null);
 
-  // Sync connection state from header's FiberConnectButton via localStorage
   const syncConnectionState = useCallback(() => {
     const connected = localStorage.getItem(FIBER_CONNECTED_KEY) === 'true';
     setIsFiberConnected(connected);
@@ -40,84 +46,54 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     return () => window.removeEventListener(FIBER_STATE_CHANGE_EVENT, syncConnectionState);
   }, [syncConnectionState]);
 
-  // Check cached content or credentials on mount
   useEffect(() => {
     const checkCache = async () => {
       setIsInitialLoading(true);
       try {
-        // First: try cached content (instant, no server call)
         const cachedContent = localStorage.getItem(`l402-content-${articleId}`);
         if (cachedContent) {
-          setArticleContent(cachedContent);
           setIsPaid(true);
           setIsInitialLoading(false);
           return;
         }
-        // Fallback: try cached credentials (needs server verification)
-        const cached = localStorage.getItem(`l402-${articleId}`);
+
+        const cached = getCachedX402Credentials(articleId);
         if (cached) {
-          const { macaroon, preimage } = JSON.parse(cached);
-          await fetchContent(macaroon, preimage);
+          const verified = await verifyPayment(cached.invoice, cached.paymentPreimage);
+          if (verified) {
+            setIsPaid(true);
+            localStorage.setItem(`l402-content-${articleId}`, content);
+          }
         }
       } catch {
-        // Ignore cache errors
       } finally {
         setIsInitialLoading(false);
       }
     };
     checkCache();
-  }, [articleId]);
+  }, [articleId, content]);
 
-  const fetchContent = async (macaroon: string, preimage: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${articleId}/content`, {
-        headers: { 'Authorization': `L402 ${macaroon}:${preimage}` },
-      });
-      if (response.status === 402) {
-        const data = await response.json();
-        setChallenge({ macaroon: data.macaroon, invoice: data.invoice });
-        setIsPaid(false);
-        return;
-      }
-      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
-      const article = await response.json();
-      setIsPaid(true);
-      setArticleContent(article.content);
-      localStorage.setItem(`l402-content-${articleId}`, article.content);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const verifyPayment = async (invoice: string, paymentPreimage: string): Promise<boolean> => {
+    const rpcUrl = localStorage.getItem(FIBER_RPC_URL_KEY)?.trim();
+    if (!rpcUrl) return false;
 
-  const fetchContentWithPaidInvoice = async (macaroon: string, paymentHash?: string): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
     try {
-      const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${articleId}/content`, {
-        headers: {
-          Authorization: `L402 ${macaroon}`,
-          ...(paymentHash ? { 'X-L402-Payment-Hash': paymentHash } : {}),
-        },
+      const client = new X402Client(rpcUrl);
+      const requirements = client.buildRequirements(
+        payTo,
+        (price * 100_000_000).toString(),
+      );
+      const payload = client.buildPayload(invoice, paymentPreimage, requirements);
+
+      const response = await client.verify({
+        x402Version: 2,
+        paymentPayload: payload,
+        paymentRequirements: requirements,
       });
-      if (response.status === 402 || response.status === 401) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error || `Payment not settled yet (${response.status})`);
-      }
-      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
-      const article = await response.json();
-      setIsPaid(true);
-      setArticleContent(article.content);
-      localStorage.setItem(`l402-content-${articleId}`, article.content);
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+
+      return response.isValid;
+    } catch {
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -125,39 +101,40 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${articleId}/content`);
-      if (response.status === 402) {
-        const data = await response.json();
-        setChallenge({ macaroon: data.macaroon, invoice: data.invoice });
-      } else if (response.ok) {
-        const article = await response.json();
-        setIsPaid(true);
-        setArticleContent(article.content);
-        localStorage.setItem(`l402-content-${articleId}`, article.content);
-      } else {
-        throw new Error(`Unexpected response: ${response.status}`);
+      const rpcUrl = localStorage.getItem(FIBER_RPC_URL_KEY)?.trim();
+      if (!rpcUrl) {
+        throw new Error('Please connect your Fiber node first');
       }
+
+      const fiberClient = new FiberRpcBrowserClient(rpcUrl);
+      const amount = (price * 100_000_000).toString();
+
+      const invoiceResult = await fiberClient.newInvoice({
+        amount,
+        description: `Article: ${articleId}`,
+        currency: 'Fibt',
+      });
+
+      if (!invoiceResult.invoice) {
+        throw new Error('Failed to generate invoice');
+      }
+
+      setChallenge({
+        invoice: invoiceResult.invoice,
+        paymentHash: invoiceResult.payment_hash,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Failed to initiate payment');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const checkPayment = async (preimage: string) => {
-    if (!challenge) return;
-    localStorage.setItem(`l402-${articleId}`, JSON.stringify({
-      macaroon: challenge.macaroon,
-      preimage,
-    }));
-    await fetchContent(challenge.macaroon, preimage);
   };
 
   const payWithConnectedNode = async () => {
     if (!challenge) return;
     const rpcUrl = localStorage.getItem(FIBER_RPC_URL_KEY)?.trim();
     if (!rpcUrl) {
-      setError('No Fiber node connected. Use the Connect Node button in the header.');
+      setError('No Fiber node connected');
       return;
     }
 
@@ -182,26 +159,44 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
         const paymentInfo = await client.getPayment({ payment_hash: paymentHash });
         if (paymentInfo.status === 'Success') { paymentSettled = true; break; }
         if (paymentInfo.status === 'Failed') {
-          throw new Error(paymentInfo.failed_error || 'Payment failed on connected node');
+          throw new Error(paymentInfo.failed_error || 'Payment failed');
         }
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       if (!paymentSettled) {
-        throw new Error('Payment is still pending on your node. Please retry in a few seconds.');
+        throw new Error('Payment is still pending');
       }
 
-      for (let attempt = 0; attempt < 10; attempt += 1) {
-        const unlocked = await fetchContentWithPaidInvoice(challenge.macaroon, paymentHash);
-        if (unlocked) return;
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      const payment = await client.getPayment({ payment_hash: paymentHash });
+      if (!payment.payment_preimage) {
+        throw new Error('Payment succeeded but no preimage found');
       }
 
-      throw new Error('Payment submitted, but unlock confirmation timed out. Please retry.');
+      const verified = await verifyPayment(challenge.invoice, payment.payment_preimage);
+      if (verified) {
+        setIsPaid(true);
+        cacheX402Credentials(articleId, challenge.invoice, payment.payment_preimage);
+        localStorage.setItem(`l402-content-${articleId}`, content);
+      } else {
+        throw new Error('Payment verification failed');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pay with connected node');
     } finally {
       setIsAutoPaying(false);
+    }
+  };
+
+  const checkPayment = async (preimage: string) => {
+    if (!challenge) return;
+    const verified = await verifyPayment(challenge.invoice, preimage);
+    if (verified) {
+      setIsPaid(true);
+      cacheX402Credentials(articleId, challenge.invoice, preimage);
+      localStorage.setItem(`l402-content-${articleId}`, content);
+    } else {
+      setError('Invalid payment preimage');
     }
   };
 
@@ -212,20 +207,10 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // ─── Render States ───
-
   const renderedHtml = useMemo(() => {
-    if (!articleContent) return '';
-    return marked.parse(articleContent, { async: false }) as string;
-  }, [articleContent]);
+    return marked.parse(content, { async: false }) as string;
+  }, [content]);
 
-  // Hide the server-rendered preview when article is unlocked to avoid duplicate first paragraph
-  useEffect(() => {
-    const previewEl = document.getElementById('article-preview');
-    if (previewEl) previewEl.style.display = isPaid ? 'none' : '';
-  }, [isPaid]);
-
-  // Initial loading: skeleton
   if (isInitialLoading) {
     return (
       <div className="py-8">
@@ -238,7 +223,6 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     );
   }
 
-  // Already paid — seamless content display
   if (isPaid) {
     return (
       <>
@@ -248,7 +232,6 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
           />
         )}
-        {/* Article footer */}
         <div className="mt-16 border-t border-border pt-8">
           <a
             href="/articles"
@@ -264,15 +247,12 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     );
   }
 
-  // Challenge: Payment view — blog paywall style
   if (challenge) {
     return (
       <div className="mt-4">
-        {/* Fade overlay hint */}
         <div className="paywall-fade h-24" />
 
         <div className="relative rounded-2xl border border-border bg-surface-1 overflow-hidden shadow-sm">
-          {/* Header */}
           <div className="border-b border-border px-6 py-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-text-primary">Continue Reading</h3>
@@ -286,7 +266,6 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
           </div>
 
           <div className="p-6 space-y-5">
-            {/* Auto-pay: prominent when connected */}
             {isFiberConnected && (
               <button
                 onClick={payWithConnectedNode}
@@ -296,7 +275,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
                 {isAutoPaying ? (
                   <>
                     <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Paying with your node…
+                    Paying with your node...
                   </>
                 ) : (
                   <>
@@ -317,7 +296,6 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
               </div>
             )}
 
-            {/* Invoice */}
             <div>
               <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
                 Invoice
@@ -330,12 +308,11 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
                   onClick={copyInvoice}
                   className="absolute right-2 top-2 rounded-lg bg-surface-3 px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-4 hover:text-text-primary cursor-pointer"
                 >
-                  {copied ? '✓ Copied' : 'Copy'}
+                  {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
             </div>
 
-            {/* Manual preimage */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -361,7 +338,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
                   disabled={isLoading}
                   className="rounded-xl bg-surface-3 px-5 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-4 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {isLoading ? 'Verifying…' : 'Verify'}
+                  {isLoading ? 'Verifying...' : 'Verify'}
                 </button>
               </div>
               <p className="mt-2 text-xs text-text-muted">
@@ -380,10 +357,8 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
     );
   }
 
-  // Default: Unlock prompt — inline paywall style
   return (
     <div className="mt-4">
-      {/* Fade overlay on preview text */}
       <div className="paywall-fade h-24" />
 
       <div className="relative -mt-8 rounded-2xl border border-border bg-surface-1 p-8 text-center shadow-sm">
@@ -400,7 +375,7 @@ export function PaymentGate({ articleId, price }: PaymentGateProps) {
           {isLoading ? (
             <>
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Loading…
+              Loading...
             </>
           ) : (
             <>

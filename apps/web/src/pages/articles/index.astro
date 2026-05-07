@@ -1,30 +1,19 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { siteConfig } from '../../config';
+import { loadAllArticles } from '../../lib/articles';
 
-let articles: any[] = [];
-let fetchError: string | null = null;
+const allArticles = loadAllArticles();
+allArticles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-try {
-  const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles`);
-  if (!response.ok) throw new Error(`Server returned ${response.status}`);
-  articles = await response.json();
-  articles.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-} catch (e) {
-  fetchError = 'Unable to load articles. The content server may be offline.';
-}
-
-// Get tag filter from URL
 const url = new URL(Astro.request.url);
 const tagFilter = url.searchParams.get('tag');
 
-// Filter by tag if specified
-if (tagFilter) {
-  articles = articles.filter((a: any) => a.tags?.includes(tagFilter));
-}
+let articles = tagFilter
+  ? allArticles.filter(a => a.tags?.includes(tagFilter))
+  : allArticles;
 
-// Group articles by year
-const byYear: Record<string, any[]> = {};
+const byYear: Record<string, typeof articles> = {};
 for (const article of articles) {
   const year = new Date(article.date).getFullYear().toString();
   if (!byYear[year]) byYear[year] = [];
@@ -32,22 +21,13 @@ for (const article of articles) {
 }
 const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a));
 
-// Collect all tags for sidebar
-let allTags: string[] = [];
-try {
-  const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles`);
-  if (response.ok) {
-    const all = await response.json();
-    const tagSet = new Set<string>();
-    all.forEach((a: any) => a.tags?.forEach((t: string) => tagSet.add(t)));
-    allTags = Array.from(tagSet).sort();
-  }
-} catch {}
+const tagSet = new Set<string>();
+allArticles.forEach(a => a.tags?.forEach(t => tagSet.add(t)));
+const allTags = Array.from(tagSet).sort();
 ---
 
 <Layout title={tagFilter ? `#${tagFilter} — Archive` : `Archive — ${siteConfig.title}`}>
   <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
-    <!-- Header -->
     <div class="mb-10">
       <h1 class="text-3xl font-bold tracking-tight">Archive</h1>
       {tagFilter ? (
@@ -55,7 +35,7 @@ try {
           <span class="text-text-muted">Filtered by</span>
           <span class="rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent">#{tagFilter}</span>
           <a href="/articles" class="text-sm text-text-muted hover:text-accent transition-colors no-underline">
-            ✕ Clear
+            Clear
           </a>
         </div>
       ) : (
@@ -63,16 +43,7 @@ try {
       )}
     </div>
 
-    {fetchError && (
-      <div class="rounded-xl border border-error/20 bg-error/5 px-6 py-8 text-center">
-        <p class="text-error">{fetchError}</p>
-        <a href="/articles" class="mt-3 inline-block text-sm text-accent hover:text-accent-hover no-underline">
-          Try again →
-        </a>
-      </div>
-    )}
-
-    {!fetchError && articles.length === 0 && (
+    {articles.length === 0 && (
       <div class="rounded-xl border border-border px-6 py-12 text-center">
         <p class="text-text-muted">
           {tagFilter ? `No articles found with tag "${tagFilter}".` : 'No articles yet.'}
@@ -80,13 +51,13 @@ try {
       </div>
     )}
 
-    {!fetchError && years.length > 0 && (
+    {years.length > 0 && (
       <div class="space-y-12">
         {years.map((year) => (
           <section>
             <h2 class="mb-4 text-lg font-bold text-text-muted">{year}</h2>
             <div class="border-l-2 border-border pl-6 space-y-0">
-              {byYear[year].map((article: any) => (
+              {byYear[year].map((article) => (
                 <a
                   href={`/articles/${article.id}`}
                   class="group flex items-baseline justify-between gap-4 py-3 no-underline transition-colors"
@@ -100,7 +71,7 @@ try {
                     )}
                     {article.tags && article.tags.length > 0 && (
                       <span class="ml-2 text-xs text-text-muted">
-                        {article.tags.map((t: string) => `#${t}`).join(' ')}
+                        {article.tags.map((t) => `#${t}`).join(' ')}
                       </span>
                     )}
                   </div>
@@ -115,8 +86,7 @@ try {
       </div>
     )}
 
-    {/* Tags cloud */}
-    {!fetchError && allTags.length > 0 && (
+    {allTags.length > 0 && (
       <section class="mt-16 border-t border-border pt-8">
         <h3 class="mb-4 text-sm font-semibold uppercase tracking-wider text-text-muted">All Tags</h3>
         <div class="flex flex-wrap gap-2">
