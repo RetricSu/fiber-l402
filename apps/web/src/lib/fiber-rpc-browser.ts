@@ -18,12 +18,19 @@ interface NewInvoiceParams {
   amount: string;
   description?: string;
   currency?: string;
-  expiry?: number;
+  expiry?: string;
+  payment_preimage?: string;
+  hash_algorithm?: string;
 }
 
 interface NewInvoiceResult {
-  invoice: string;
-  payment_hash: string;
+  invoice_address: string;
+  invoice: {
+    amount: string;
+    data: {
+      payment_hash: string;
+    };
+  };
 }
 
 export class FiberRpcBrowserClient {

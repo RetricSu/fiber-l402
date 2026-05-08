@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { marked } from 'marked';
 import { FIBER_STATE_CHANGE_EVENT } from './FiberConnectButton';
-import { siteConfig } from '../config';
 import { FiberRpcBrowserClient } from '../lib/fiber-rpc-browser';
 import {
   X402Client,
   getCachedX402Credentials,
   cacheX402Credentials,
-  clearX402Credentials,
 } from '../lib/x402-client';
 
 const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
 const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
+const MERCHANT_FIBER_RPC_URL = import.meta.env.PUBLIC_MERCHANT_FIBER_RPC_URL || 'http://127.0.0.1:8230';
+const SHANNONS_PER_CKB = 100_000_000;
 
 interface PaymentGateProps {
   articleId: string;
@@ -23,6 +23,21 @@ interface PaymentGateProps {
 interface PaymentChallenge {
   invoice: string;
   paymentHash: string;
+  paymentPreimage: string;
+}
+
+function priceToShannons(price: number): bigint {
+  return BigInt(Math.round(price * SHANNONS_PER_CKB));
+}
+
+function toU128Hex(value: bigint): string {
+  return `0x${value.toString(16)}`;
+}
+
+function generatePaymentPreimage(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }
 
 export function PaymentGate({ articleId, price, content, payTo }: PaymentGateProps) {
@@ -34,6 +49,8 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
   const [isFiberConnected, setIsFiberConnected] = useState(false);
   const [isAutoPaying, setIsAutoPaying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const amountShannons = useMemo(() => priceToShannons(price), [price]);
+  const amountDecimal = amountShannons.toString();
 
   const syncConnectionState = useCallback(() => {
     const connected = localStorage.getItem(FIBER_CONNECTED_KEY) === 'true';
@@ -74,14 +91,13 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
   }, [articleId, content]);
 
   const verifyPayment = async (invoice: string, paymentPreimage: string): Promise<boolean> => {
-    const rpcUrl = localStorage.getItem(FIBER_RPC_URL_KEY)?.trim();
-    if (!rpcUrl) return false;
+    if (!payTo) return false;
 
     try {
-      const client = new X402Client(rpcUrl);
+      const client = new X402Client(MERCHANT_FIBER_RPC_URL);
       const requirements = client.buildRequirements(
         payTo,
-        (price * 100_000_000).toString(),
+        amountDecimal,
       );
       const payload = client.buildPayload(invoice, paymentPreimage, requirements);
 
@@ -97,31 +113,70 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
     }
   };
 
+  const settlePayment = async (invoice: string, paymentPreimage: string): Promise<boolean> => {
+    if (!payTo) return false;
+
+    try {
+      const client = new X402Client(MERCHANT_FIBER_RPC_URL);
+      const requirements = client.buildRequirements(payTo, amountDecimal);
+      const payload = client.buildPayload(invoice, paymentPreimage, requirements);
+
+      const response = await client.settle({
+        x402Version: 2,
+        paymentPayload: payload,
+        paymentRequirements: requirements,
+      });
+
+      return response.success;
+    } catch {
+      return false;
+    }
+  };
+
+  const unlockWithPayment = async (invoice: string, paymentPreimage: string) => {
+    const verified = await verifyPayment(invoice, paymentPreimage);
+    if (!verified) {
+      throw new Error('Payment verification failed');
+    }
+
+    const settled = await settlePayment(invoice, paymentPreimage);
+    if (!settled) {
+      throw new Error('Payment settlement failed');
+    }
+
+    setIsPaid(true);
+    cacheX402Credentials(articleId, invoice, paymentPreimage);
+    localStorage.setItem(`l402-content-${articleId}`, content);
+  };
+
   const initiatePayment = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const rpcUrl = localStorage.getItem(FIBER_RPC_URL_KEY)?.trim();
-      if (!rpcUrl) {
-        throw new Error('Please connect your Fiber node first');
+      if (!payTo) {
+        throw new Error('Missing merchant payTo pubkey');
       }
 
-      const fiberClient = new FiberRpcBrowserClient(rpcUrl);
-      const amount = (price * 100_000_000).toString();
+      const merchantClient = new FiberRpcBrowserClient(MERCHANT_FIBER_RPC_URL);
+      const paymentPreimage = generatePaymentPreimage();
 
-      const invoiceResult = await fiberClient.newInvoice({
-        amount,
+      const invoiceResult = await merchantClient.newInvoice({
+        amount: toU128Hex(amountShannons),
         description: `Article: ${articleId}`,
         currency: 'Fibt',
+        expiry: '0xe10',
+        payment_preimage: paymentPreimage,
+        hash_algorithm: 'sha256',
       });
 
-      if (!invoiceResult.invoice) {
+      if (!invoiceResult.invoice_address || !invoiceResult.invoice?.data?.payment_hash) {
         throw new Error('Failed to generate invoice');
       }
 
       setChallenge({
-        invoice: invoiceResult.invoice,
-        paymentHash: invoiceResult.payment_hash,
+        invoice: invoiceResult.invoice_address,
+        paymentHash: invoiceResult.invoice.data.payment_hash,
+        paymentPreimage,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initiate payment');
@@ -145,7 +200,7 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
       const client = new FiberRpcBrowserClient(rpcUrl);
       const paymentResult = await client.sendPayment({
         invoice: challenge.invoice,
-        allow_self_payment: true,
+        allow_self_payment: rpcUrl === MERCHANT_FIBER_RPC_URL ? true : undefined,
       });
 
       const paymentHash = paymentResult.payment_hash;
@@ -169,18 +224,10 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
       }
 
       const payment = await client.getPayment({ payment_hash: paymentHash });
-      if (!payment.payment_preimage) {
-        throw new Error('Payment succeeded but no preimage found');
-      }
-
-      const verified = await verifyPayment(challenge.invoice, payment.payment_preimage);
-      if (verified) {
-        setIsPaid(true);
-        cacheX402Credentials(articleId, challenge.invoice, payment.payment_preimage);
-        localStorage.setItem(`l402-content-${articleId}`, content);
-      } else {
-        throw new Error('Payment verification failed');
-      }
+      await unlockWithPayment(
+        challenge.invoice,
+        payment.payment_preimage || challenge.paymentPreimage,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pay with connected node');
     } finally {
@@ -190,13 +237,11 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
 
   const checkPayment = async (preimage: string) => {
     if (!challenge) return;
-    const verified = await verifyPayment(challenge.invoice, preimage);
-    if (verified) {
-      setIsPaid(true);
-      cacheX402Credentials(articleId, challenge.invoice, preimage);
-      localStorage.setItem(`l402-content-${articleId}`, content);
-    } else {
-      setError('Invalid payment preimage');
+    setError(null);
+    try {
+      await unlockWithPayment(challenge.invoice, preimage || challenge.paymentPreimage);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid payment proof');
     }
   };
 
@@ -318,7 +363,7 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
                 e.preventDefault();
                 const form = e.target as HTMLFormElement;
                 const input = form.elements.namedItem('preimage') as HTMLInputElement;
-                checkPayment(input.value);
+                checkPayment(input.value.trim());
               }}
             >
               <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
@@ -328,8 +373,7 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
                 <input
                   type="text"
                   name="preimage"
-                  placeholder="0x..."
-                  required
+                  placeholder="0x... (optional)"
                   disabled={isLoading}
                   className="flex-1 rounded-xl border border-border bg-surface-2 px-4 py-3 font-mono text-sm text-text-primary placeholder-text-muted transition-colors focus:border-accent focus:outline-none disabled:opacity-50"
                 />
@@ -342,7 +386,7 @@ export function PaymentGate({ articleId, price, content, payTo }: PaymentGatePro
                 </button>
               </div>
               <p className="mt-2 text-xs text-text-muted">
-                Pay the invoice with any Fiber wallet, then enter the preimage to unlock.
+                Pay the invoice with any Fiber wallet, then verify. Paste a preimage only if your wallet exposes one.
               </p>
             </form>
 

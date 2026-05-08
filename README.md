@@ -2,6 +2,15 @@
 
 A simplified L402 paywall demo using native fnn x402 support.
 
+## Branch Notes
+
+This branch, `simplify-x402-native`, is the x402-native demo adaptation.
+
+- The payer node is connected through the browser-safe runtime proxy at `http://127.0.0.1:28229`
+- The merchant x402 node is the PR #1301 `fnn` binary at `http://127.0.0.1:8230`
+- The frontend calls the native FNN x402 endpoints directly: `/supported`, `/verify`, and `/settle`
+- The old proxy-based L402 flow is not used here
+
 ## Architecture
 
 - **No proxy server** — direct browser-to-fnn x402 communication

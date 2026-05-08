@@ -60,8 +60,8 @@ export interface X402SettleResponse {
   errorReason?: string;
   errorMessage?: string;
   payer?: string;
-  transaction: string;
-  network: string;
+  transaction?: string;
+  network?: string;
   amount?: string;
   extensions?: Record<string, unknown>;
 }
