@@ -2,39 +2,30 @@
 import Layout from '../../layouts/Layout.astro';
 import { PaymentGate } from '../../components/PaymentGate.tsx';
 import { siteConfig } from '../../config';
+import { loadAllArticles, getArticleById } from '../../lib/articles';
 
-const { id } = Astro.params;
-let article = null;
-let error = null;
-
-try {
-  const response = await fetch(`${siteConfig.apiBaseUrl}/api/articles/${id}`);
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Article not found');
-    throw new Error(`Server error: ${response.status}`);
-  }
-  article = await response.json();
-} catch (e) {
-  error = e instanceof Error ? e.message : 'Failed to load article';
-  if (error.includes('fetch') || error.includes('ECONNREFUSED')) {
-    error = 'The content server is currently unreachable. Please try again later.';
-  }
+export async function getStaticPaths() {
+  const articles = loadAllArticles();
+  return articles.map(article => ({
+    params: { id: article.id },
+  }));
 }
 
-// Estimate reading time (~200 words/min for English)
+const { id } = Astro.params;
+const article = id ? getArticleById(id) : null;
+
 function estimateReadingTime(preview: string): string {
-  // Since we only have the preview, give a rough estimate
   return '5 min read';
 }
 ---
 
-<Layout title={article?.title ? `${article.title} — ${siteConfig.title}` : `Error — ${siteConfig.title}`} description={article?.preview}>
+<Layout title={article?.title ? `${article.title} — ${siteConfig.title}` : `Not Found — ${siteConfig.title}`} description={article?.preview}>
   <div class="mx-auto max-w-3xl px-6 py-12 sm:py-16">
-    {error && (
+    {!article && (
       <div class="rounded-2xl border border-error/20 bg-error/5 px-8 py-12 text-center">
         <div class="mb-3 text-4xl">⚠</div>
-        <h2 class="mb-2 text-xl font-semibold text-error">Something went wrong</h2>
-        <p class="mb-6 text-text-secondary">{error}</p>
+        <h2 class="mb-2 text-xl font-semibold text-error">Article not found</h2>
+        <p class="mb-6 text-text-secondary">The article you're looking for doesn't exist.</p>
         <a
           href="/articles"
           class="inline-flex items-center gap-2 rounded-lg bg-surface-3 px-4 py-2.5 text-sm font-medium text-text-primary no-underline transition-colors hover:bg-surface-4"
@@ -47,9 +38,8 @@ function estimateReadingTime(preview: string): string {
       </div>
     )}
 
-    {!error && article && (
+    {article && (
       <>
-        <!-- Breadcrumb -->
         <nav class="mb-8">
           <a
             href="/articles"
@@ -62,7 +52,6 @@ function estimateReadingTime(preview: string): string {
           </a>
         </nav>
 
-        <!-- Article Header -->
         <header class="mb-10">
           <h1 class="text-3xl font-bold leading-tight tracking-tight sm:text-4xl" style="line-height: 1.3;">
             {article.title}
@@ -80,7 +69,6 @@ function estimateReadingTime(preview: string): string {
             )}
           </div>
 
-          <!-- Tags -->
           {article.tags && article.tags.length > 0 && (
             <div class="mt-4 flex flex-wrap gap-2">
               {article.tags.map((tag: string) => (
@@ -92,16 +80,16 @@ function estimateReadingTime(preview: string): string {
           )}
         </header>
 
-        <!-- Preview as natural article opening -->
         <div id="article-preview" class="mb-0" style="font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.9; color: var(--color-text-secondary);">
           <p>{article.preview}</p>
         </div>
 
-        <!-- Payment Gate + Content -->
         <PaymentGate
           client:load
           articleId={id!}
           price={article.price}
+          content={article.content}
+          payTo={import.meta.env.PUBLIC_PAY_TO_PUBKEY || ''}
         />
       </>
     )}

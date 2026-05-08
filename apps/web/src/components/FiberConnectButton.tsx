@@ -3,6 +3,7 @@ import { FiberRpcBrowserClient } from '../lib/fiber-rpc-browser';
 
 const FIBER_RPC_URL_KEY = 'fiber-user-rpc-url';
 const FIBER_CONNECTED_KEY = 'fiber-user-rpc-connected';
+const DEFAULT_PAYER_RPC_URL = import.meta.env.PUBLIC_DEFAULT_PAYER_RPC_URL || 'http://127.0.0.1:28229';
 export const FIBER_STATE_CHANGE_EVENT = 'fiber-connection-state-change';
 
 interface FiberNodeSummary {
@@ -38,7 +39,7 @@ function toNodeSummary(info: NodeInfoLike): FiberNodeSummary | null {
 
 export function FiberConnectButton() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [rpcUrl, setRpcUrl] = useState('http://127.0.0.1:8229');
+  const [rpcUrl, setRpcUrl] = useState(DEFAULT_PAYER_RPC_URL);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);

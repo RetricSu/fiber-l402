@@ -14,6 +14,25 @@ interface GetPaymentParams {
   payment_hash: string;
 }
 
+interface NewInvoiceParams {
+  amount: string;
+  description?: string;
+  currency?: string;
+  expiry?: string;
+  payment_preimage?: string;
+  hash_algorithm?: string;
+}
+
+interface NewInvoiceResult {
+  invoice_address: string;
+  invoice: {
+    amount: string;
+    data: {
+      payment_hash: string;
+    };
+  };
+}
+
 export class FiberRpcBrowserClient {
   private readonly url: string;
 
@@ -31,5 +50,9 @@ export class FiberRpcBrowserClient {
 
   getPayment(params: GetPaymentParams): Promise<GetPaymentResult> {
     return callJsonRpc<GetPaymentResult>(this.url, 'get_payment', [params]);
+  }
+
+  newInvoice(params: NewInvoiceParams): Promise<NewInvoiceResult> {
+    return callJsonRpc<NewInvoiceResult>(this.url, 'new_invoice', [params]);
   }
 }

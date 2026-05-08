@@ -1,79 +1,63 @@
-# Fiber L402
+# Fiber L402 (Simplified)
 
-An L402 paywall demo built on Fiber Network.
+A simplified L402 paywall demo using native fnn x402 support.
 
-This repository no longer maintains a custom `@fiber-l402/sdk` package. The app now uses `@fiber-pay/sdk@0.2.0` directly and is aligned with Fiber node `0.8.x`.
+## Branch Notes
 
-## Project Structure
+This branch, `simplify-x402-native`, is the x402-native demo adaptation.
 
-```text
-fiber-l402/
-├── apps/
-│   ├── proxy/           # Express API + L402 middleware
-│   └── web/             # Astro + React frontend
-├── docs/
-│   └── fiber-sdk.md     # Fiber SDK usage notes
-└── e2e/                 # Playwright E2E tests
-```
+- The payer node is connected through the browser-safe runtime proxy at `http://127.0.0.1:28229`
+- The merchant x402 node is the PR #1301 `fnn` binary at `http://127.0.0.1:8230`
+- The frontend calls the native FNN x402 endpoints directly: `/supported`, `/verify`, and `/settle`
+- The old proxy-based L402 flow is not used here
 
-## Stack
+## Architecture
 
-- `@fiber-pay/sdk@0.2.0` for Fiber RPC + L402 primitives
-- Express backend (`apps/proxy`)
-- Astro + React frontend (`apps/web`)
+- **No proxy server** — direct browser-to-fnn x402 communication
+- **Static Astro build** — articles embedded at build time
+- **Native x402 endpoints** — uses fnn's built-in `/supported`, `/verify`, `/settle`
 
-## Quick Start
+## Prerequisites
 
-### 1. Install
+- Node.js 20+
+- pnpm 9+
+- Running Fiber node with x402 module enabled (RPC module `x402`)
 
+## Setup
+
+1. Install dependencies:
 ```bash
 pnpm install
 ```
 
-### 2. Configure Environment
-
-Copy `.env.example` to `.env` at repository root:
-
+2. Set your node's pubkey in `.env`:
 ```env
-PORT=3001
-L402_ROOT_KEY=<64-char-hex>
-ARTICLE_PRICE_CKB=0.1
-L402_EXPIRY_SECONDS=3600
-FIBER_RPC_URL=http://127.0.0.1:8229
-
-WEB_URL=http://localhost:4321
-PROXY_URL=http://localhost:3001
+PUBLIC_PAY_TO_PUBKEY=your-node-pubkey-hex
 ```
 
-Generate a random L402 root key:
-
+3. Build and serve:
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+pnpm build
+cd apps/web && pnpm preview
 ```
 
-### 3. Run
+## How It Works
 
-```bash
-pnpm dev
-```
+1. Articles are loaded from `src/content/articles/` at build time
+2. Each article has a `price` in CKB in its frontmatter
+3. When user clicks "Unlock", the frontend:
+   - Generates an invoice via the connected node's `new_invoice` RPC
+   - User pays the invoice (auto via connected node or manual)
+   - Frontend verifies payment via fnn's native `/verify` endpoint
+   - Content unlocks and is cached in localStorage
 
-- Web: `http://localhost:4321`
-- Proxy: `http://localhost:3001`
+## Differences from Original
 
-## L402 Flow
-
-```text
-GET /api/articles/:id/content
-  -> 402 WWW-Authenticate: L402 macaroon=..., invoice=...
-  -> pay invoice with Fiber
-  -> retry with Authorization: L402 <macaroon>[:<preimage>]
-  -> 200 + full article content
-```
-
-## Notes
-
-- `pnpm test` runs Vitest unit/integration tests only.
-- Playwright specs in `e2e/` should be run with Playwright tooling.
+- Removed Express proxy server
+- Removed L402Middleware and macaroon-based auth
+- Removed `@fiber-pay/sdk` server-side dependency
+- Uses fnn's native x402 HTTP endpoints instead
+- Static build instead of server-rendered
 
 ## License
 
