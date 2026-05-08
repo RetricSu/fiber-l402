@@ -12,13 +12,15 @@ This was our first L402 paywall implementation. It uses `@fiber-pay/sdk@0.2.0` d
 
 ## Project Structure
 
-    fiber-l402/
-    ├── apps/
-    │   ├── proxy/           # Express API + custom L402 middleware
-    │   └── web/             # Astro + React frontend
-    ├── docs/
-    │   └── fiber-sdk.md     # Fiber SDK usage notes
-    └── e2e/                 # Playwright E2E tests
+```text
+fiber-l402/
+├── apps/
+│   ├── proxy/           # Express API + custom L402 middleware
+│   └── web/             # Astro + React frontend
+├── docs/
+│   └── fiber-sdk.md     # Fiber SDK usage notes
+└── e2e/                 # Playwright E2E tests
+```
 
 ## Stack
 
@@ -38,7 +40,7 @@ pnpm install
 
 Copy `.env.example` to `.env` at repository root:
 
-```bash
+```env
 PORT=3001
 L402_ROOT_KEY=<64-char-hex>
 ARTICLE_PRICE_CKB=0.1
